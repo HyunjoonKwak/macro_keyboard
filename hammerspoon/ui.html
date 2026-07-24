@@ -587,6 +587,65 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
           }
         },
         {
+          name: "Chrome 브라우저",
+          description: "탭 제어 중심. 새 레이어로 추가하면 Chrome 실행 시 자동 전환됩니다.",
+          color: "#3d3016",
+          appTrigger: "Google Chrome",
+          keys: {
+            f13: { type: "keys", mods: ["cmd"], key: "t", label: "새 탭", icon: "🆕" },
+            f14: { type: "keys", mods: ["cmd"], key: "w", label: "탭 닫기", icon: "❌" },
+            f15: { type: "keys", mods: ["cmd", "shift"], key: "t", label: "탭 복구", icon: "♻️" },
+            f16: { type: "keys", mods: ["ctrl", "shift"], key: "tab", label: "이전 탭", icon: "◀️" },
+            f17: { type: "keys", mods: ["cmd"], key: "l", label: "주소창", icon: "🔍" },
+            f18: { type: "keys", mods: ["ctrl"], key: "tab", label: "다음 탭", icon: "▶️" },
+            f19: { type: "keys", mods: ["cmd"], key: "r", label: "새로고침", icon: "🔄" },
+            f20: { type: "keys", mods: ["cmd", "shift"], key: "n", label: "시크릿 창", icon: "🕶️" },
+            "s-hyper+f17": { type: "keys", mods: ["cmd"], key: "d", label: "북마크", icon: "⭐" },
+            "hyper+f14": { type: "keys", mods: ["cmd", "alt"], key: "i", label: "개발자 도구", icon: "🛠️" }
+          }
+        },
+        {
+          name: "Keynote 발표",
+          description: "프레젠테이션 진행용. Keynote 실행 시 자동 전환됩니다.",
+          color: "#2a4a6b",
+          appTrigger: "Keynote",
+          keys: {
+            f13: { type: "keys", mods: ["cmd", "alt"], key: "p", label: "재생", icon: "▶️" },
+            f16: { type: "keys", mods: [], key: "left", label: "이전", icon: "◀️" },
+            f18: { type: "keys", mods: [], key: "right", label: "다음", icon: "▶️" },
+            f17: { type: "keys", mods: [], key: "b", label: "검은 화면", icon: "⬛" },
+            f14: { type: "keys", mods: [], key: "w", label: "흰 화면", icon: "⬜" },
+            "hyper+f19": { type: "keys", mods: [], key: "escape", label: "쇼 종료", icon: "🚪" }
+          }
+        },
+        {
+          name: "CapCut 편집",
+          description: "분할·삭제·재생 등 기본 편집. CapCut 실행 시 자동 전환됩니다.",
+          color: "#3a2440",
+          appTrigger: "CapCut",
+          keys: {
+            f15: { type: "keys", mods: ["cmd"], key: "b", label: "분할", icon: "✂️" },
+            f19: { type: "keys", mods: [], key: "space", label: "재생/정지", icon: "▶️" },
+            "s-hyper+f13": { type: "keys", mods: [], key: "delete", label: "삭제", icon: "🗑️" },
+            "hyper+f14": { type: "keys", mods: ["cmd"], key: "z", label: "실행 취소", icon: "↩️" },
+            "hyper+f15": { type: "keys", mods: ["cmd", "shift"], key: "z", label: "다시 실행", icon: "↪️" },
+            "s-hyper+f20": { type: "keys", mods: ["cmd"], key: "e", label: "내보내기", icon: "📤" }
+          }
+        },
+        {
+          name: "메신저 모음",
+          description: "설치된 메신저·메일 앱을 한 줄에. 앱 아이콘이 자동 표시됩니다.",
+          color: "#243d2b",
+          keys: {
+            f13: { type: "app", arg: "KakaoTalk", label: "카카오톡" },
+            f14: { type: "app", arg: "Telegram", label: "Telegram" },
+            f15: { type: "app", arg: "Mail", label: "메일" },
+            f16: { type: "app", arg: "Messages", label: "메시지" },
+            f17: { type: "app", arg: "FaceTime", label: "FaceTime" },
+            f18: { type: "app", arg: "zoom.us", label: "Zoom" }
+          }
+        },
+        {
           name: "자주 가는 웹",
           description: "자주 여는 사이트 바로가기 묶음. 주소는 취향대로 수정하세요.",
           color: "#333a5c",
