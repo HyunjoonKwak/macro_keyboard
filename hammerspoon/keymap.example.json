@@ -1,0 +1,140 @@
+{
+  "layerSwitchKey": "hyper+f17",
+  "layers": [
+    {
+      "name": "① 일반",
+      "profiles": {
+        "default": {
+          "f13": {
+            "type": "app",
+            "arg": "Claude",
+            "label": "Claude"
+          },
+          "f14": {
+            "type": "app",
+            "arg": "Google Chrome",
+            "label": "Chrome"
+          },
+          "f15": {
+            "type": "app",
+            "arg": "iTerm",
+            "label": "iTerm"
+          },
+          "f16": {
+            "type": "mic",
+            "label": "마이크"
+          },
+          "f17": {
+            "type": "keys",
+            "mods": [
+              "cmd"
+            ],
+            "key": "space",
+            "label": "Spotlight"
+          },
+          "f18": {
+            "type": "app",
+            "arg": "KakaoTalk",
+            "label": "KakaoTalk"
+          },
+          "f19": {
+            "type": "text",
+            "arg": "me@example.com",
+            "label": "이메일"
+          },
+          "f20": {
+            "type": "app",
+            "arg": "ChatGPT",
+            "label": "ChatGPT"
+          }
+        },
+        "Google Chrome": {
+          "f13": {
+            "type": "keys",
+            "mods": [
+              "cmd"
+            ],
+            "key": "t",
+            "label": "새 탭"
+          },
+          "f14": {
+            "type": "keys",
+            "mods": [
+              "cmd",
+              "shift"
+            ],
+            "key": "t",
+            "label": "닫은 탭 복구"
+          }
+        }
+      }
+    },
+    {
+      "name": "② 개발",
+      "profiles": {
+        "default": {
+          "f13": {
+            "type": "app",
+            "arg": "Visual Studio Code",
+            "label": "VS Code"
+          },
+          "f14": {
+            "type": "app",
+            "arg": "Cursor",
+            "label": "Cursor"
+          },
+          "f15": {
+            "type": "app",
+            "arg": "Xcode",
+            "label": "Xcode"
+          },
+          "f16": {
+            "type": "keys",
+            "mods": [
+              "cmd"
+            ],
+            "key": "`",
+            "label": "앱 창 전환"
+          }
+        }
+      }
+    },
+    {
+      "name": "③ 미디어",
+      "profiles": {
+        "default": {
+          "f13": {
+            "type": "media",
+            "arg": "PLAY",
+            "label": "재생/일시정지"
+          },
+          "f14": {
+            "type": "media",
+            "arg": "PREVIOUS",
+            "label": "이전 곡"
+          },
+          "f15": {
+            "type": "media",
+            "arg": "NEXT",
+            "label": "다음 곡"
+          },
+          "f16": {
+            "type": "media",
+            "arg": "SOUND_DOWN",
+            "label": "볼륨 작게"
+          },
+          "f17": {
+            "type": "media",
+            "arg": "SOUND_UP",
+            "label": "볼륨 크게"
+          },
+          "f18": {
+            "type": "media",
+            "arg": "MUTE",
+            "label": "음소거"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>K20 스트림덱 설정</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101116;
+      --panel: #191b23;
+      --panel-2: #20232d;
+      --key: #292d39;
+      --key-hover: #343a49;
+      --line: #383d4a;
+      --text: #f2f4f8;
+      --muted: #9299a8;
+      --accent: #7c8cff;
+      --accent-soft: rgba(124, 140, 255, .18);
+      --danger: #ff6f7d;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: var(--bg); color: var(--text); font-size: 14px; }
+    button, input, select, textarea { font: inherit; }
+    button, select, input, textarea {
+      color: var(--text);
+      background: #242731;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    button { cursor: pointer; }
+    button:hover { border-color: #596174; }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 13px 18px 11px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(20, 22, 28, .96);
+    }
+
+    .tabs { display: flex; flex: 1; gap: 7px; min-width: 0; overflow-x: auto; }
+    .tab-wrap { position: relative; display: flex; flex: 0 0 auto; }
+    .tab {
+      padding: 8px 13px;
+      border-radius: 9px;
+      background: transparent;
+      border-color: transparent;
+      white-space: nowrap;
+    }
+    .tab.active { padding-right: 34px; background: var(--accent-soft); border-color: var(--accent); }
+    .tab-more {
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 28px;
+      height: calc(100% - 6px);
+      padding: 0;
+      border-color: transparent;
+      background: transparent;
+      color: #c6cafa;
+    }
+    .tab-add {
+      flex: 0 0 auto;
+      min-width: 36px;
+      padding: 7px 11px;
+      border-color: #4a5060;
+      background: transparent;
+      color: var(--accent);
+      font-size: 18px;
+      line-height: 1;
+    }
+    .header-controls { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .header-button { padding: 8px 11px; background: transparent; }
+    .profile-wrap { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .profile-wrap label { color: var(--muted); font-size: 12px; }
+    #profileSelect { min-width: 175px; padding: 8px 30px 8px 10px; }
+    .layer-menu {
+      position: fixed;
+      z-index: 30;
+      width: 142px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #232630;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, .4);
+    }
+    .layer-menu[hidden] { display: none; }
+    .layer-menu button {
+      display: block;
+      width: 100%;
+      padding: 8px 9px;
+      border: 0;
+      background: transparent;
+      text-align: left;
+    }
+    .layer-menu button:hover { background: #303440; }
+    .layer-menu button:disabled { cursor: default; opacity: .35; }
+    .layer-menu .danger { color: var(--danger); }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(490px, 1fr) 315px;
+      min-height: 0;
+    }
+
+    .keypad-area {
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      padding: 18px;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(124, 140, 255, .07), transparent 55%),
+        var(--bg);
+    }
+
+    .keypad {
+      width: min(100%, 530px);
+      height: min(100%, 510px);
+      display: grid;
+      grid-template-columns: repeat(4, minmax(82px, 1fr));
+      grid-template-rows: repeat(6, minmax(57px, 1fr));
+      gap: 9px;
+      padding: 15px;
+      border: 1px solid #303440;
+      border-radius: 20px;
+      background: #171920;
+      box-shadow: 0 18px 55px rgba(0, 0, 0, .32);
+    }
+
+    .key {
+      position: relative;
+      min-width: 0;
+      padding: 18px 7px 8px;
+      overflow: hidden;
+      border: 1px solid #3b404d;
+      border-bottom-color: #171920;
+      border-radius: 11px;
+      background: linear-gradient(145deg, #303440, #242731);
+      box-shadow: inset 0 1px rgba(255,255,255,.04), 0 3px 0 #111218;
+      color: var(--text);
+    }
+    .key:not(.disabled):not(.switch):hover { background: var(--key-hover); transform: translateY(-1px); }
+    .key.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft), 0 3px 0 #111218; }
+    .key.inherited .key-content::after { content: "공통"; display: block; color: var(--accent); font-size: 9px; margin-top: 3px; }
+    .engraving { position: absolute; top: 7px; left: 9px; color: #aab0bd; font-size: 10px; font-weight: 650; }
+    .key-content { display: grid; place-items: center; align-content: center; height: 100%; line-height: 1.18; text-align: center; }
+    .key-icon { min-height: 20px; font-size: 20px; }
+    .key-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: 650; }
+    .key-id { color: #6f7685; font-family: ui-monospace, monospace; font-size: 8px; margin-top: 4px; }
+    .key.unassigned .key-label { color: #6f7685; font-weight: 500; }
+    .key.disabled { cursor: not-allowed; border-style: dashed; background: transparent; box-shadow: none; opacity: .48; }
+    .key.switch { cursor: default; border-color: #645f3e; background: linear-gradient(145deg, #403d29, #29281f); box-shadow: 0 3px 0 #12120f; }
+    .key.switch .key-label { color: #f3d779; }
+
+    aside {
+      min-height: 0;
+      padding: 18px;
+      overflow-y: auto;
+      border-left: 1px solid var(--line);
+      background: var(--panel);
+    }
+    aside h2 { margin: 0 0 4px; font-size: 17px; }
+    #selectionHint { min-height: 18px; margin-bottom: 16px; color: var(--muted); font-size: 11px; }
+    .field { margin-bottom: 13px; }
+    .field > label, .field-label { display: block; margin-bottom: 6px; color: #b9bfca; font-size: 11px; font-weight: 650; }
+    .field input, .field select, .field textarea { width: 100%; padding: 9px 10px; outline: none; }
+    .field textarea { min-height: 72px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+    .action-help { min-height: 32px; margin: 7px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .dynamic { display: none; }
+    .dynamic.visible { display: block; }
+    .modifiers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+    .check { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; }
+    .check input { width: auto; margin: 0; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
+    .actions button { padding: 10px; font-weight: 700; }
+    #saveButton { background: var(--accent); border-color: var(--accent); color: white; }
+    #clearButton { color: var(--danger); background: transparent; }
+    .empty-editor { color: var(--muted); line-height: 1.6; }
+    .editor-form[hidden], .empty-editor[hidden] { display: none; }
+    .status { position: fixed; left: 18px; bottom: 12px; color: var(--muted); font-size: 11px; pointer-events: none; }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      background: rgba(5, 6, 9, .72);
+      backdrop-filter: blur(5px);
+    }
+    .modal-overlay[hidden] { display: none; }
+    .modal {
+      width: min(680px, 100%);
+      max-height: min(590px, 100%);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .5);
+    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    .modal-header h2 { margin: 0; font-size: 18px; }
+    .modal-close { width: 32px; height: 32px; padding: 0; background: transparent; font-size: 18px; }
+    .modal-body { max-height: 520px; padding: 18px; overflow-y: auto; }
+    .preset-list { display: grid; gap: 11px; }
+    .preset-card { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+    .preset-card h3 { margin: 0 0 5px; font-size: 15px; }
+    .preset-card p { margin: 0; color: var(--muted); line-height: 1.45; }
+    .preset-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .preset-actions button { padding: 8px 10px; }
+    .preset-actions button:first-child { border-color: var(--accent); color: #d8dcff; }
+    .guide { color: #d9dde6; line-height: 1.65; }
+    .guide h3 { margin: 18px 0 6px; color: white; font-size: 14px; }
+    .guide h3:first-child { margin-top: 0; }
+    .guide p { margin: 0 0 9px; }
+    .guide strong { color: #bfc6ff; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <nav class="tabs" id="layerTabs" aria-label="레이어"></nav>
+      <div class="header-controls">
+        <button class="header-button" type="button" id="presetButton">프리셋</button>
+        <button class="header-button" type="button" id="helpButton">도움말</button>
+        <div class="profile-wrap">
+          <label for="profileSelect">프로필</label>
+          <select id="profileSelect"></select>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="keypad-area">
+        <div class="keypad" id="keypad" aria-label="K20 키패드"></div>
+      </section>
+
+      <aside>
+        <div class="empty-editor" id="emptyEditor">편집할 키를 선택하세요.<br>점선 키와 레이어 전환 키는 편집할 수 없습니다.</div>
+        <form class="editor-form" id="editorForm" hidden onsubmit="return false;">
+          <h2 id="editorTitle">키 설정</h2>
+          <div id="selectionHint"></div>
+
+          <div class="field">
+            <label for="actionType">동작</label>
+            <select id="actionType">
+              <option value="none">없음</option>
+              <option value="app">앱 실행</option>
+              <option value="url">URL 열기</option>
+              <option value="keys">키 조합</option>
+              <option value="text">텍스트 입력</option>
+              <option value="shell">셸 명령</option>
+              <option value="shortcut">단축어 실행</option>
+              <option value="media">미디어</option>
+              <option value="mic">마이크 토글</option>
+            </select>
+            <p class="action-help" id="actionHelp"></p>
+          </div>
+
+          <div class="dynamic field" data-for="app">
+            <label for="appArg">앱 이름</label>
+            <input id="appArg" type="text" placeholder="예: Google Chrome">
+          </div>
+          <div class="dynamic field" data-for="url">
+            <label for="urlArg">URL</label>
+            <input id="urlArg" type="url" placeholder="https://example.com">
+          </div>
+          <div class="dynamic field" data-for="text">
+            <label for="textArg">입력할 텍스트</label>
+            <textarea id="textArg"></textarea>
+          </div>
+          <div class="dynamic field" data-for="shell">
+            <label for="shellArg">셸 명령</label>
+            <textarea id="shellArg" spellcheck="false"></textarea>
+          </div>
+          <div class="dynamic field" data-for="shortcut">
+            <label for="shortcutArg">macOS 단축어 이름</label>
+            <input id="shortcutArg" type="text">
+          </div>
+          <div class="dynamic" data-for="keys">
+            <div class="field">
+              <span class="field-label">보조 키</span>
+              <div class="modifiers">
+                <label class="check"><input type="checkbox" name="mod" value="cmd">⌘ cmd</label>
+                <label class="check"><input type="checkbox" name="mod" value="alt">⌥ alt</label>
+                <label class="check"><input type="checkbox" name="mod" value="ctrl">⌃ ctrl</label>
+                <label class="check"><input type="checkbox" name="mod" value="shift">⇧ shift</label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="keyArg">키</label>
+              <input id="keyArg" type="text" placeholder="예: t, space, `">
+            </div>
+          </div>
+          <div class="dynamic field" data-for="media">
+            <label for="mediaArg">미디어 동작</label>
+            <select id="mediaArg">
+              <option value="PLAY">재생 / 일시정지</option>
+              <option value="PREVIOUS">이전 곡</option>
+              <option value="NEXT">다음 곡</option>
+              <option value="SOUND_UP">볼륨 크게</option>
+              <option value="SOUND_DOWN">볼륨 작게</option>
+              <option value="MUTE">음소거</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="labelArg">표시 이름</label>
+            <input id="labelArg" type="text" placeholder="키에 표시할 이름">
+          </div>
+          <div class="field">
+            <label for="iconArg">아이콘 (이모지 1개)</label>
+            <input id="iconArg" type="text" placeholder="예: 🚀">
+          </div>
+          <div class="actions">
+            <button type="button" id="saveButton">저장</button>
+            <button type="button" id="clearButton">할당 해제</button>
+          </div>
+        </form>
+      </aside>
+    </main>
+  </div>
+  <div class="status" id="status">설정을 불러오는 중…</div>
+  <div class="layer-menu" id="layerMenu" hidden>
+    <button type="button" data-layer-action="rename">이름 변경</button>
+    <button type="button" data-layer-action="left">← 이동</button>
+    <button type="button" data-layer-action="right">→ 이동</button>
+    <button type="button" class="danger" data-layer-action="delete">삭제</button>
+  </div>
+  <div class="modal-overlay" id="modalOverlay" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <h2 id="modalTitle"></h2>
+        <button class="modal-close" type="button" id="modalClose" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const PHYSICAL_KEYS = [
+        { engraving: "Esc", id: "hyper+f19", row: 1, col: 1 },
+        { engraving: "Tab", id: "hyper+f20", row: 1, col: 2 },
+        { engraving: "⌫", id: "s-hyper+f13", row: 1, col: 3 },
+        { engraving: "Fn", disabled: true, row: 1, col: 4 },
+        { engraving: "Num", disabled: true, row: 2, col: 1 },
+        { engraving: "/", id: "hyper+f14", row: 2, col: 2 },
+        { engraving: "*", id: "hyper+f15", row: 2, col: 3 },
+        { engraving: "-", id: "hyper+f16", row: 2, col: 4 },
+        { engraving: "7", id: "f13", row: 3, col: 1 },
+        { engraving: "8", id: "f14", row: 3, col: 2 },
+        { engraving: "9", id: "f15", row: 3, col: 3 },
+        { engraving: "+", switch: true, row: 3, col: 4, rowSpan: 2 },
+        { engraving: "4", id: "f16", row: 4, col: 1 },
+        { engraving: "5", id: "f17", row: 4, col: 2 },
+        { engraving: "6", id: "f18", row: 4, col: 3 },
+        { engraving: "1", id: "f19", row: 5, col: 1 },
+        { engraving: "2", id: "f20", row: 5, col: 2 },
+        { engraving: "3", id: "s-hyper+f17", row: 5, col: 3 },
+        { engraving: "Enter", id: "s-hyper+f20", row: 5, col: 4, rowSpan: 2 },
+        { engraving: "0", id: "s-hyper+f18", row: 6, col: 1, colSpan: 2 },
+        { engraving: ".", id: "s-hyper+f19", row: 6, col: 3 }
+      ];
+      const ARG_FIELDS = {
+        app: "appArg", url: "urlArg", text: "textArg",
+        shell: "shellArg", shortcut: "shortcutArg"
+      };
+      const ACTION_HELP = {
+        none: "이 키의 동작을 비웁니다. 예: 미할당 상태",
+        app: "앱을 실행하거나 앞으로 가져옵니다. 예: Google Chrome",
+        url: "웹 주소를 기본 브라우저로 엽니다. 예: https://example.com",
+        keys: "보조 키와 일반 키를 함께 누릅니다. 예: cmd + shift + 4",
+        text: "현재 입력 위치에 문구를 입력합니다. 예: 이메일 주소",
+        shell: "터미널 명령을 실행합니다. 예: git pull",
+        shortcut: "macOS 단축어 앱의 항목을 실행합니다. 예: 집중 모드 켜기",
+        media: "재생과 음량 같은 시스템 미디어 키를 보냅니다. 예: 재생 / 일시정지",
+        mic: "기본 입력 장치의 음소거를 전환합니다. 예: 회의 중 마이크 끄기"
+      };
+      const PRESETS = [
+        {
+          name: "회의",
+          description: "화상회의, 화면 캡처, 마이크와 잠금 동작을 모았습니다.",
+          keys: {
+            f16: { type: "mic", label: "마이크", icon: "🎙" },
+            f13: { type: "app", arg: "zoom.us", label: "Zoom", icon: "📹" },
+            f14: { type: "keys", mods: ["cmd", "shift"], key: "4", label: "캡처", icon: "📸" },
+            "hyper+f19": { type: "keys", mods: ["ctrl", "cmd"], key: "q", label: "화면 잠금", icon: "🔒" }
+          }
+        },
+        {
+          name: "개발",
+          description: "주요 개발 도구 실행과 창 전환, git pull을 배치합니다.",
+          keys: {
+            f13: { type: "app", arg: "Visual Studio Code", label: "VS Code" },
+            f14: { type: "app", arg: "Cursor", label: "Cursor" },
+            f15: { type: "app", arg: "iTerm", label: "iTerm" },
+            f16: { type: "app", arg: "Xcode", label: "Xcode" },
+            f19: { type: "shell", arg: "cd ~/code_work && git pull", label: "git pull" },
+            f17: { type: "keys", mods: ["cmd"], key: "`", label: "창 전환" }
+          }
+        },
+        {
+          name: "미디어",
+          description: "재생, 곡 이동, 음량 조절을 숫자키 줄에 배치합니다.",
+          keys: {
+            f13: { type: "media", arg: "PLAY", label: "재생", icon: "▶️" },
+            f14: { type: "media", arg: "PREVIOUS", label: "이전 곡", icon: "⏮" },
+            f15: { type: "media", arg: "NEXT", label: "다음 곡", icon: "⏭" },
+            f16: { type: "media", arg: "SOUND_DOWN", label: "볼륨 작게", icon: "🔉" },
+            f17: { type: "media", arg: "SOUND_UP", label: "볼륨 크게", icon: "🔊" },
+            f18: { type: "media", arg: "MUTE", label: "음소거", icon: "🔇" }
+          }
+        },
+        {
+          name: "유틸",
+          description: "캡처, 화면 잠금, Claude와 이메일 입력을 빠르게 엽니다.",
+          keys: {
+            f13: { type: "keys", mods: ["cmd", "shift"], key: "4", label: "캡처" },
+            f14: { type: "keys", mods: ["ctrl", "cmd"], key: "q", label: "잠금" },
+            f15: { type: "url", arg: "https://claude.ai", label: "Claude 웹" },
+            f19: { type: "text", arg: "me@example.com", label: "이메일" }
+          }
+        }
+      ];
+
+      let keymap = null;
+      let layerIndex = 0;
+      let profileName = "default";
+      let selectedId = null;
+      let layerMenuIndex = null;
+
+      const $ = id => document.getElementById(id);
+      const bridge = payload => {
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.k20) {
+          window.webkit.messageHandlers.k20.postMessage(payload);
+        } else {
+          $("status").textContent = "Hammerspoon 안에서 열어 주세요.";
+        }
+      };
+
+      const currentLayer = () => keymap.layers[layerIndex];
+      const currentProfile = () => currentLayer().profiles[profileName];
+      const ownSpec = id => currentProfile()[id] || null;
+      const effectiveSpec = id => ownSpec(id) || (profileName !== "default" ? currentLayer().profiles.default[id] : null);
+      const clone = value => JSON.parse(JSON.stringify(value));
+      const saveKeymap = () => {
+        $("status").textContent = "저장 중…";
+        bridge({ action: "save", keymap });
+      };
+
+      function renderTabs() {
+        const tabs = $("layerTabs");
+        tabs.replaceChildren();
+        keymap.layers.forEach((layer, index) => {
+          const wrap = document.createElement("div");
+          wrap.className = "tab-wrap";
+          const button = document.createElement("button");
+          button.className = "tab" + (index === layerIndex ? " active" : "");
+          button.textContent = layer.name;
+          button.type = "button";
+          button.addEventListener("click", () => {
+            closeLayerMenu();
+            if (layerIndex === index) return;
+            layerIndex = index;
+            profileName = "default";
+            selectedId = null;
+            renderAll();
+          });
+          button.addEventListener("dblclick", event => {
+            event.preventDefault();
+            if (layerIndex !== index) {
+              layerIndex = index;
+              profileName = "default";
+              selectedId = null;
+              renderAll();
+            }
+            openLayerMenu(index, $("layerTabs").querySelector(".tab.active"));
+          });
+          wrap.appendChild(button);
+          if (index === layerIndex) {
+            const more = document.createElement("button");
+            more.className = "tab-more";
+            more.type = "button";
+            more.textContent = "⋯";
+            more.setAttribute("aria-label", `${layer.name} 레이어 메뉴`);
+            more.addEventListener("click", event => {
+              event.stopPropagation();
+              openLayerMenu(index, more);
+            });
+            wrap.appendChild(more);
+          }
+          tabs.appendChild(wrap);
+        });
+        const add = document.createElement("button");
+        add.className = "tab-add";
+        add.type = "button";
+        add.textContent = "+";
+        add.setAttribute("aria-label", "레이어 추가");
+        add.addEventListener("click", addLayer);
+        tabs.appendChild(add);
+      }
+
+      function addLayer() {
+        closeLayerMenu();
+        const name = window.prompt("새 레이어 이름을 입력하세요.");
+        if (!name || !name.trim()) return;
+        keymap.layers.push({ name: name.trim(), profiles: { default: {} } });
+        layerIndex = keymap.layers.length - 1;
+        profileName = "default";
+        selectedId = null;
+        renderAll();
+        saveKeymap();
+      }
+
+      function openLayerMenu(index, anchor) {
+        layerMenuIndex = index;
+        const menu = $("layerMenu");
+        const rect = anchor.getBoundingClientRect();
+        menu.hidden = false;
+        menu.style.left = `${Math.min(rect.left, window.innerWidth - 152)}px`;
+        menu.style.top = `${Math.min(rect.bottom + 5, window.innerHeight - menu.offsetHeight - 8)}px`;
+        menu.querySelector('[data-layer-action="left"]').disabled = index === 0;
+        menu.querySelector('[data-layer-action="right"]').disabled = index === keymap.layers.length - 1;
+      }
+
+      function closeLayerMenu() {
+        $("layerMenu").hidden = true;
+        layerMenuIndex = null;
+      }
+
+      function handleLayerAction(action) {
+        if (layerMenuIndex === null || !keymap.layers[layerMenuIndex]) return;
+        const index = layerMenuIndex;
+        const layer = keymap.layers[index];
+        if (action === "rename") {
+          const name = window.prompt("레이어 이름을 입력하세요.", layer.name);
+          if (!name || !name.trim()) return;
+          layer.name = name.trim();
+        } else if (action === "left" && index > 0) {
+          [keymap.layers[index - 1], keymap.layers[index]] = [keymap.layers[index], keymap.layers[index - 1]];
+          layerIndex = index - 1;
+        } else if (action === "right" && index < keymap.layers.length - 1) {
+          [keymap.layers[index], keymap.layers[index + 1]] = [keymap.layers[index + 1], keymap.layers[index]];
+          layerIndex = index + 1;
+        } else if (action === "delete") {
+          if (keymap.layers.length === 1) {
+            window.alert("마지막 레이어는 삭제할 수 없습니다");
+            return;
+          }
+          if (!window.confirm(`"${layer.name}" 레이어를 삭제할까요?`)) return;
+          keymap.layers.splice(index, 1);
+          layerIndex = Math.min(index, keymap.layers.length - 1);
+          profileName = "default";
+          selectedId = null;
+        } else {
+          return;
+        }
+        closeLayerMenu();
+        renderAll();
+        saveKeymap();
+      }
+
+      function uniqueLayerName(baseName) {
+        const names = new Set(keymap.layers.map(layer => layer.name));
+        if (!names.has(baseName)) return baseName;
+        let suffix = 2;
+        while (names.has(`${baseName} ${suffix}`)) suffix += 1;
+        return `${baseName} ${suffix}`;
+      }
+
+      function openModal(title) {
+        closeLayerMenu();
+        $("modalTitle").textContent = title;
+        $("modalBody").replaceChildren();
+        $("modalOverlay").hidden = false;
+      }
+
+      function closeModal() {
+        $("modalOverlay").hidden = true;
+      }
+
+      function showPresets() {
+        openModal("프리셋");
+        const list = document.createElement("div");
+        list.className = "preset-list";
+        PRESETS.forEach(preset => {
+          const card = document.createElement("article");
+          card.className = "preset-card";
+          const title = document.createElement("h3");
+          title.textContent = preset.name;
+          const description = document.createElement("p");
+          description.textContent = preset.description;
+          const actions = document.createElement("div");
+          actions.className = "preset-actions";
+          const add = document.createElement("button");
+          add.type = "button";
+          add.textContent = "새 레이어로 추가";
+          add.addEventListener("click", () => {
+            keymap.layers.push({
+              name: uniqueLayerName(preset.name),
+              profiles: { default: clone(preset.keys) }
+            });
+            layerIndex = keymap.layers.length - 1;
+            profileName = "default";
+            selectedId = null;
+            closeModal();
+            renderAll();
+            saveKeymap();
+          });
+          const apply = document.createElement("button");
+          apply.type = "button";
+          apply.textContent = "현재 레이어에 적용";
+          apply.addEventListener("click", () => {
+            const confirmed = window.confirm(
+              `"${preset.name}" 프리셋이 정의한 키를 현재 레이어의 공통 설정에 덮어쓸까요?`
+            );
+            if (!confirmed) return;
+            const target = currentLayer().profiles.default || (currentLayer().profiles.default = {});
+            Object.entries(preset.keys).forEach(([id, spec]) => {
+              target[id] = clone(spec);
+            });
+            profileName = "default";
+            selectedId = null;
+            closeModal();
+            renderAll();
+            saveKeymap();
+          });
+          actions.append(add, apply);
+          card.append(title, description, actions);
+          list.appendChild(card);
+        });
+        $("modalBody").appendChild(list);
+      }
+
+      function showHelp() {
+        openModal("K20 도움말");
+        const guide = document.createElement("div");
+        guide.className = "guide";
+        guide.innerHTML = `
+          <h3>레이어</h3>
+          <p><strong>+</strong> 물리 키로 레이어를 순환합니다. 설정 화면의 <strong>+ 탭</strong>에서는 레이어를 추가하고, 활성 탭의 <strong>⋯</strong>에서 이름·순서·삭제를 관리할 수 있습니다.</p>
+          <h3>앱 프로필</h3>
+          <p>앞에 있는 앱 이름과 같은 프로필이 있으면 그 설정을 자동 적용하고, 비어 있는 키는 공통(default) 설정을 사용합니다.</p>
+          <h3>즉시 반영과 HUD</h3>
+          <p>저장한 내용은 바로 반영됩니다. 데스크톱 위젯을 숨겼을 때 레이어를 바꾸면 현재 배치를 HUD로 잠깐 보여 줍니다.</p>
+          <h3>데스크톱 위젯</h3>
+          <p>메뉴바의 위젯 메뉴에서 숨김·컴팩트·확장과 표시 레벨을 정합니다. 레이어 이름을 누르면 다음 레이어로 이동하고, ⛭를 누르면 설정을 엽니다.</p>
+          <h3>배치 팁</h3>
+          <p>자주 쓰는 동작은 손이 바로 닿는 숫자키에, 화면 잠금이나 셸 명령처럼 실수하면 곤란한 동작은 구석 키에 두세요.</p>
+        `;
+        $("modalBody").appendChild(guide);
+      }
+
+      function renderProfiles() {
+        const select = $("profileSelect");
+        select.replaceChildren();
+        const profiles = currentLayer().profiles;
+        if (!profiles.default) profiles.default = {};
+        const names = Object.keys(profiles).filter(name => name !== "default").sort((a, b) => a.localeCompare(b, "ko"));
+        [["default", "공통 (default)"], ...names.map(name => [name, name])].forEach(([value, text]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = text;
+          select.appendChild(option);
+        });
+        const add = document.createElement("option");
+        add.value = "__add__";
+        add.textContent = "+ 앱 프로필 추가";
+        select.appendChild(add);
+        select.value = profileName;
+      }
+
+      function renderKeypad() {
+        const keypad = $("keypad");
+        keypad.replaceChildren();
+        PHYSICAL_KEYS.forEach(info => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "key";
+          button.style.gridRow = `${info.row} / span ${info.rowSpan || 1}`;
+          button.style.gridColumn = `${info.col} / span ${info.colSpan || 1}`;
+          if (info.disabled) button.classList.add("disabled");
+          if (info.switch) button.classList.add("switch");
+          if (info.id === selectedId) button.classList.add("selected");
+
+          let icon = "", label = "미할당", idText = info.id || "";
+          if (info.switch) {
+            label = "레이어 전환";
+            idText = keymap.layerSwitchKey;
+          } else if (info.disabled) {
+            label = "신호 없음";
+            idText = "";
+          } else {
+            const spec = effectiveSpec(info.id);
+            if (spec) {
+              icon = spec.icon || "";
+              label = spec.label || fallbackLabel(spec);
+              if (!ownSpec(info.id) && profileName !== "default") button.classList.add("inherited");
+            } else {
+              button.classList.add("unassigned");
+            }
+          }
+          button.innerHTML = `<span class="engraving"></span><span class="key-content"><span class="key-icon"></span><span class="key-label"></span><span class="key-id"></span></span>`;
+          button.querySelector(".engraving").textContent = info.engraving;
+          button.querySelector(".key-icon").textContent = icon;
+          button.querySelector(".key-label").textContent = label;
+          button.querySelector(".key-id").textContent = idText;
+          if (!info.disabled && !info.switch) {
+            button.addEventListener("click", () => selectKey(info.id, info.engraving));
+          } else {
+            button.disabled = true;
+          }
+          keypad.appendChild(button);
+        });
+      }
+
+      function fallbackLabel(spec) {
+        if (spec.type === "mic") return "마이크";
+        if (spec.type === "keys") return [...(spec.mods || []), spec.key || ""].filter(Boolean).join("+");
+        return spec.arg || spec.type || "할당됨";
+      }
+
+      function selectKey(id, engraving) {
+        selectedId = id;
+        $("emptyEditor").hidden = true;
+        $("editorForm").hidden = false;
+        $("editorTitle").textContent = `${engraving} 키 설정`;
+        const inherited = profileName !== "default" && !ownSpec(id) && currentLayer().profiles.default[id];
+        $("selectionHint").textContent = `${id}${inherited ? " · 현재 공통 설정을 사용 중" : ""}`;
+        fillEditor(ownSpec(id));
+        renderKeypad();
+      }
+
+      function fillEditor(spec) {
+        const type = spec ? spec.type : "none";
+        $("actionType").value = type;
+        Object.values(ARG_FIELDS).forEach(id => { $(id).value = ""; });
+        $("keyArg").value = "";
+        $("mediaArg").value = "PLAY";
+        document.querySelectorAll('input[name="mod"]').forEach(input => { input.checked = false; });
+        $("labelArg").value = spec && spec.label ? spec.label : "";
+        $("iconArg").value = spec && spec.icon ? spec.icon : "";
+        if (spec) {
+          if (ARG_FIELDS[type]) $(ARG_FIELDS[type]).value = spec.arg || "";
+          if (type === "keys") {
+            $("keyArg").value = spec.key || "";
+            const mods = new Set(spec.mods || []);
+            document.querySelectorAll('input[name="mod"]').forEach(input => { input.checked = mods.has(input.value); });
+          }
+          if (type === "media") $("mediaArg").value = spec.arg || "PLAY";
+        }
+        updateDynamicFields();
+      }
+
+      function updateDynamicFields() {
+        const type = $("actionType").value;
+        document.querySelectorAll(".dynamic").forEach(element => {
+          element.classList.toggle("visible", element.dataset.for === type);
+        });
+        $("actionHelp").textContent = ACTION_HELP[type] || "";
+      }
+
+      function buildSpec() {
+        const type = $("actionType").value;
+        if (type === "none") return null;
+        const spec = { type };
+        if (ARG_FIELDS[type]) {
+          const arg = $(ARG_FIELDS[type]).value;
+          if (!arg) throw new Error("동작 값을 입력해 주세요.");
+          spec.arg = arg;
+        } else if (type === "keys") {
+          spec.mods = Array.from(document.querySelectorAll('input[name="mod"]:checked')).map(input => input.value);
+          spec.key = $("keyArg").value.trim();
+          if (!spec.key) throw new Error("키를 입력해 주세요.");
+        } else if (type === "media") {
+          spec.arg = $("mediaArg").value;
+        }
+        const label = $("labelArg").value.trim();
+        const icon = $("iconArg").value.trim();
+        if (label) spec.label = label;
+        if (icon) spec.icon = icon;
+        return spec;
+      }
+
+      function saveSelection() {
+        if (!selectedId) return;
+        try {
+          const spec = buildSpec();
+          if (spec) currentProfile()[selectedId] = spec;
+          else delete currentProfile()[selectedId];
+          renderKeypad();
+          fillEditor(currentProfile()[selectedId] || null);
+          saveKeymap();
+        } catch (error) {
+          window.alert(error.message);
+        }
+      }
+
+      function clearSelection() {
+        if (!selectedId) return;
+        delete currentProfile()[selectedId];
+        renderKeypad();
+        fillEditor(null);
+        saveKeymap();
+      }
+
+      function renderEditor() {
+        if (!selectedId) {
+          $("emptyEditor").hidden = false;
+          $("editorForm").hidden = true;
+        }
+      }
+
+      function renderAll() {
+        renderTabs();
+        renderProfiles();
+        renderKeypad();
+        renderEditor();
+      }
+
+      $("profileSelect").addEventListener("change", event => {
+        if (event.target.value === "__add__") {
+          const name = window.prompt("정확한 macOS 앱 이름을 입력하세요.");
+          if (name && name.trim()) {
+            const cleanName = name.trim();
+            if (!currentLayer().profiles[cleanName]) currentLayer().profiles[cleanName] = {};
+            profileName = cleanName;
+            selectedId = null;
+            renderAll();
+            saveKeymap();
+          } else {
+            event.target.value = profileName;
+          }
+          return;
+        }
+        profileName = event.target.value;
+        selectedId = null;
+        renderAll();
+      });
+      $("actionType").addEventListener("change", updateDynamicFields);
+      $("saveButton").addEventListener("click", saveSelection);
+      $("clearButton").addEventListener("click", clearSelection);
+      $("presetButton").addEventListener("click", showPresets);
+      $("helpButton").addEventListener("click", showHelp);
+      $("modalClose").addEventListener("click", closeModal);
+      $("modalOverlay").addEventListener("click", event => {
+        if (event.target === $("modalOverlay")) closeModal();
+      });
+      $("layerMenu").addEventListener("click", event => {
+        const action = event.target.dataset.layerAction;
+        if (action) handleLayerAction(action);
+      });
+      document.addEventListener("click", event => {
+        if (!$("layerMenu").hidden && !$("layerMenu").contains(event.target) && !event.target.classList.contains("tab-more")) {
+          closeLayerMenu();
+        }
+      });
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+          closeLayerMenu();
+          closeModal();
+        }
+      });
+
+      window.k20ReceiveKeymap = incoming => {
+        const previousSelection = selectedId;
+        keymap = incoming;
+        if (!keymap.layers[layerIndex]) layerIndex = 0;
+        if (!currentLayer().profiles[profileName]) profileName = "default";
+        selectedId = previousSelection;
+        $("status").textContent = "설정이 최신 상태입니다.";
+        renderAll();
+        if (selectedId) {
+          const keyInfo = PHYSICAL_KEYS.find(info => info.id === selectedId);
+          if (keyInfo) selectKey(selectedId, keyInfo.engraving);
+        }
+      };
+
+      window.k20SelectKey = id => {
+        if (!keymap) return false;
+        const keyInfo = PHYSICAL_KEYS.find(info => info.id === id && !info.disabled && !info.switch);
+        if (!keyInfo) return false;
+        selectKey(keyInfo.id, keyInfo.engraving);
+        return true;
+      };
+
+      document.addEventListener("DOMContentLoaded", () => bridge({ action: "load" }));
+    })();
+  </script>
+</body>
+</html>
