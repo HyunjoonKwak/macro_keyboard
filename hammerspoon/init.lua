@@ -1332,6 +1332,18 @@ local function syncMicState()
 end
 syncMicState()
 k20MicPollTimer = hs.timer.doEvery(5, syncMicState)
+
+-- K20 연결/분리 감지 (vendor 7276 / product 49160)
+k20UsbWatcher = hs.usb.watcher.new(function(event)
+  if event.vendorID == 7276 and event.productID == 49160 then
+    if event.eventType == "added" then
+      hs.alert.show("⌨️ K20 연결됨 · " .. (k20Layers[k20CurrentLayer] and k20Layers[k20CurrentLayer].name or ""))
+    elseif event.eventType == "removed" then
+      hs.alert.show("⌨️ K20 분리됨")
+    end
+  end
+end)
+k20UsbWatcher:start()
 renderWidget()
 
 local function reloadOnLuaChange(files)
