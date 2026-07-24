@@ -400,12 +400,11 @@ local function buildKeypadElements(layer, frameOpts)
     local y = startY + (keyInfo.row - 1) * (cellH + gap)
     local w = cellW * colSpan + gap * (colSpan - 1)
     local h = cellH * rowSpan + gap * (rowSpan - 1)
-    local label = keyInfo.engraving
+    -- 할당된 키만 라벨 표시. 미할당/비활성 키는 빈 칸으로 (시각적 소음 제거)
+    local label = ""
     if keyInfo.switch then
       label = frameOpts.switchLabel or "+  레이어 전환"
-    elseif keyInfo.disabled then
-      label = keyInfo.engraving .. "  —"
-    elseif defaultSpecs[keyInfo.id] then
+    elseif not keyInfo.disabled and defaultSpecs[keyInfo.id] then
       local spec = defaultSpecs[keyInfo.id]
       label = (spec.icon and spec.icon .. " " or "") .. (spec.label or keyInfo.engraving)
     end
