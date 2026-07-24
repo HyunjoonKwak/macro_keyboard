@@ -366,7 +366,8 @@ local function dispatch(id)
   local action = (appProfile and appProfile[id]) or layer.profiles.default[id]
   if action then
     action()
-  else
+  elseif k20Webview and k20Webview:hswindow() then
+    -- 설정 창이 열려 있을 때만 안내 (키 찾기 용도). 평소에는 조용히 무시.
     hs.alert.show(layer.name .. " · " .. id .. " (미할당)")
   end
 end
@@ -389,6 +390,7 @@ local function buildKeypadElements(layer, frameOpts)
   local startY = frameOpts.startY or 45
   local fontSize = frameOpts.fontSize or 10
   local radius = frameOpts.radius or 5
+  local alphaScale = frameOpts.alpha or 1 -- 위젯 불투명도에 맞춰 키 칸도 함께 조절
   local defaultSpecs = layer.specs.default or {}
 
   for _, keyInfo in ipairs(PHYSICAL_KEYS) do
@@ -415,8 +417,8 @@ local function buildKeypadElements(layer, frameOpts)
       id = interactive and ("key-bg:" .. keyInfo.id) or ("key-bg-" .. keyInfo.row .. "-" .. keyInfo.col),
       action = "fill",
       fillColor = keyInfo.disabled
-          and { white = 0.18, alpha = 0.45 }
-          or { red = 0.18, green = 0.2, blue = 0.26, alpha = 0.95 },
+          and { white = 0.18, alpha = 0.45 * alphaScale }
+          or { red = 0.18, green = 0.2, blue = 0.26, alpha = 0.95 * alphaScale },
       roundedRectRadii = { xRadius = radius, yRadius = radius },
       frame = { x = x, y = y, w = w, h = h },
       trackMouseDown = interactive,
@@ -427,7 +429,7 @@ local function buildKeypadElements(layer, frameOpts)
       type = "text",
       id = interactive and target or ("key-label-" .. keyInfo.row .. "-" .. keyInfo.col),
       text = label,
-      textColor = { white = keyInfo.disabled and 0.55 or 0.95, alpha = 1 },
+      textColor = { white = keyInfo.disabled and 0.55 or 0.95, alpha = alphaScale },
       textFont = ".AppleSystemUIFont",
       textSize = fontSize,
       textAlignment = "center",
@@ -550,7 +552,8 @@ local function trackedText(id, text, frame, size, alignment)
     type = "text",
     id = id,
     text = text,
-    textColor = { white = 0.96, alpha = 1 },
+    -- 불투명도를 따라가되 글자는 최소 가독성 유지
+    textColor = { white = 0.96, alpha = math.max(0.55, widgetAlpha()) },
     textFont = ".AppleSystemUIFontBold",
     textSize = size,
     textAlignment = alignment or "center",
@@ -741,6 +744,7 @@ renderWidget = function()
       switchLabel = "+ 레이어",
       interactive = true,
       centerText = true,
+      alpha = alpha,
     })) do
       k20Widget:appendElements(element)
     end
