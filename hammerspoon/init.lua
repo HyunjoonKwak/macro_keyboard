@@ -128,6 +128,32 @@ local function validateActionSpec(spec)
   if spec.icon ~= nil and type(spec.icon) ~= "string" then
     return false, "icon은 문자열이어야 함"
   end
+  if spec.image ~= nil then
+    if type(spec.image) ~= "string" or spec.image == "" or spec.image:match("%.%.") then
+      return false, "image는 icons/ 아래 상대 경로여야 함"
+    end
+  end
+
+  if spec.type == "multi" then
+    if type(spec.steps) ~= "table" or #spec.steps == 0 then
+      return false, "매크로에는 1개 이상의 step이 필요함"
+    end
+    if #spec.steps > 50 then return false, "매크로 step은 50개 이하" end
+    for index, step in ipairs(spec.steps) do
+      if type(step) ~= "table" then return false, "step " .. index .. " 형식 오류" end
+      if step.type == "delay" then
+        if type(step.seconds) ~= "number" or step.seconds < 0 or step.seconds > 60 then
+          return false, "step " .. index .. ": 지연은 0~60초"
+        end
+      elseif step.type == "multi" then
+        return false, "매크로 안에 매크로는 넣을 수 없음"
+      else
+        local valid, reason = validateActionSpec(step)
+        if not valid then return false, "step " .. index .. ": " .. reason end
+      end
+    end
+    return true
+  end
 
   if spec.type == "mic" then
     if spec.arg ~= nil then return false, "mic에는 arg를 지정하지 않음" end
@@ -156,6 +182,8 @@ local function validateActionSpec(spec)
   return false, "알 수 없는 액션 타입: " .. tostring(spec.type)
 end
 
+local runSteps
+
 local function actionFromSpec(spec)
   if spec.type == "app" then return app(spec.arg) end
   if spec.type == "url" then return url(spec.arg) end
@@ -165,7 +193,35 @@ local function actionFromSpec(spec)
   if spec.type == "shortcut" then return shortcut(spec.arg) end
   if spec.type == "media" then return media(spec.arg) end
   if spec.type == "mic" then return micToggle end
+  if spec.type == "multi" then
+    return function() runSteps(spec.steps, 1) end
+  end
   return nil
+end
+
+-- 매크로(multi): step을 순서대로 실행. 타이머는 GC 방지를 위해 전역 목록에 보관.
+k20MultiTimers = k20MultiTimers or {}
+
+local function keepTimer(timer)
+  for i = #k20MultiTimers, 1, -1 do
+    if not k20MultiTimers[i]:running() then table.remove(k20MultiTimers, i) end
+  end
+  table.insert(k20MultiTimers, timer)
+end
+
+runSteps = function(steps, index)
+  local step = steps[index]
+  if not step then return end
+  local delay = 0.05 -- step 사이 기본 간격 (연속 키 입력 안정화)
+  if step.type == "delay" then
+    delay = step.seconds
+  else
+    local action = actionFromSpec(step)
+    if action then action() end
+  end
+  if steps[index + 1] then
+    keepTimer(hs.timer.doAfter(delay, function() runSteps(steps, index + 1) end))
+  end
 end
 
 local function validateKeymapForSave(keymap)
@@ -346,6 +402,17 @@ local function hexToColor(hex, alpha, brighten)
   return { red = channel(r), green = channel(g), blue = channel(b), alpha = alpha or 1 }
 end
 
+-- 이미지 아이콘 캐시 (경로 → hs.image, 실패 시 false 기록해 재시도 방지)
+k20ImageCache = k20ImageCache or {}
+local function iconImage(relPath)
+  if type(relPath) ~= "string" or relPath == "" then return nil end
+  local cached = k20ImageCache[relPath]
+  if cached ~= nil then return cached or nil end
+  local image = hs.image.imageFromPath(CONFIG_DIR .. relPath)
+  k20ImageCache[relPath] = image or false
+  return image
+end
+
 local WIDGET_MODE_KEY = "k20.widget.mode"
 local WIDGET_X_KEY = "k20.widget.x"
 local WIDGET_Y_KEY = "k20.widget.y"
@@ -402,11 +469,17 @@ local function buildKeypadElements(layer, frameOpts)
     local h = cellH * rowSpan + gap * (rowSpan - 1)
     -- 할당된 키만 라벨 표시. 미할당/비활성 키는 빈 칸으로 (시각적 소음 제거)
     local label = ""
+    local cellImage = nil
     if keyInfo.switch then
       label = frameOpts.switchLabel or "+  레이어 전환"
     elseif not keyInfo.disabled and defaultSpecs[keyInfo.id] then
       local spec = defaultSpecs[keyInfo.id]
-      label = (spec.icon and spec.icon .. " " or "") .. (spec.label or keyInfo.engraving)
+      cellImage = spec.image and iconImage(spec.image) or nil
+      if cellImage then
+        label = spec.label or ""
+      else
+        label = (spec.icon and spec.icon .. " " or "") .. (spec.label or keyInfo.engraving)
+      end
     end
 
     local target = keyInfo.id and ("key:" .. keyInfo.id) or "drag"
@@ -424,6 +497,21 @@ local function buildKeypadElements(layer, frameOpts)
       trackMouseUp = interactive,
       trackMouseMove = interactive,
     })
+    if cellImage then
+      local size = math.min(h - 6, 22)
+      local imgX = (label == "") and (x + (w - size) / 2) or (x + 5)
+      table.insert(elements, {
+        type = "image",
+        id = interactive and ("key-img:" .. keyInfo.id) or ("key-img-" .. keyInfo.row .. "-" .. keyInfo.col),
+        image = cellImage,
+        imageScaling = "scaleProportionally",
+        imageAlpha = alphaScale,
+        frame = { x = imgX, y = y + (h - size) / 2, w = size, h = size },
+        trackMouseDown = interactive,
+        trackMouseUp = interactive,
+        trackMouseMove = interactive,
+      })
+    end
     table.insert(elements, {
       type = "text",
       id = interactive and target or ("key-label-" .. keyInfo.row .. "-" .. keyInfo.col),
@@ -638,6 +726,7 @@ local function widgetMouseCallback(_, message, elementId)
 
     local target = state.target or elementId or ""
     local keyId = target:match("^key:(.+)$") or target:match("^key%-bg:(.+)$")
+        or target:match("^key%-img:(.+)$")
     if keyId then
       selectWidgetKey(keyId)
     elseif target == "settings" then
@@ -868,6 +957,33 @@ local function saveKeymap(keymap)
   end
 end
 
+-- 이미지 아이콘 선택: 네이티브 파일 선택창 → icons/ 폴더로 복사 → UI에 상대 경로 전달
+local function pickIconImage()
+  local result = hs.dialog.chooseFileOrFolder(
+    "아이콘으로 쓸 이미지를 선택하세요", "~", true, false, false,
+    { "png", "jpg", "jpeg", "gif", "icns", "tiff", "heic", "webp" }, true)
+  if type(result) ~= "table" or not result["1"] then return end
+  local path = tostring(result["1"])
+      :gsub("^file://", "")
+      :gsub("%%(%x%x)", function(hex) return string.char(tonumber(hex, 16)) end)
+  local base = (path:match("([^/]+)$") or "icon"):gsub("[^%w%.%-_가-힣]", "_")
+  local destRel = "icons/" .. os.time() .. "-" .. base
+  hs.execute(string.format("mkdir -p %q && cp %q %q",
+    CONFIG_DIR .. "icons", path, CONFIG_DIR .. destRel), false)
+  if not hs.fs.attributes(CONFIG_DIR .. destRel) then
+    warn("이미지 복사 실패")
+    return
+  end
+  k20ImageCache[destRel] = nil
+  if k20Webview then
+    local ok, encoded = pcall(hs.json.encode, destRel)
+    if ok then
+      k20Webview:evaluateJavaScript(
+        "window.k20ReceiveIcon && window.k20ReceiveIcon(" .. encoded .. ");")
+    end
+  end
+end
+
 local function handleUIMessage(message)
   -- WKScriptMessage는 보통 body에 게시 객체를 담지만, 직접 변환되는 버전도 허용한다.
   local body = type(message) == "table" and message.body or nil
@@ -881,6 +997,8 @@ local function handleUIMessage(message)
     saveKeymap(body.keymap)
   elseif body.action == "widget" then
     k20ApplyWidgetConfig(body.config)
+  elseif body.action == "pickImage" then
+    pickIconImage()
   else
     warn("알 수 없는 UI 요청")
   end

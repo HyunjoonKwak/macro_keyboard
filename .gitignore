@@ -2,3 +2,5 @@
 keylog.txt
 num-diag.txt
 hammerspoon/keymap.json
+hammerspoon/icons/*
+!hammerspoon/icons/.gitkeep

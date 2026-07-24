@@ -64,6 +64,12 @@
     .icon-picker { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 8px; max-height: 132px; overflow-y: auto; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: #1c1e27; }
     .icon-picker button { padding: 3px 0; font-size: 16px; line-height: 1.3; background: transparent; border: 1px solid transparent; border-radius: 6px; }
     .icon-picker button:hover { background: var(--key-hover); border-color: var(--line); }
+    .image-row { display: flex; align-items: center; gap: 8px; }
+    .image-row img { width: 34px; height: 34px; border-radius: 7px; object-fit: contain; background: #1c1e27; border: 1px solid var(--line); }
+    .image-row button { padding: 7px 11px; font-size: 12px; }
+    .secondary-actions { margin-top: 12px; }
+    .secondary-actions button { font-weight: 500; font-size: 12px; padding: 7px; }
+    .key-img { width: 20px; height: 20px; object-fit: contain; }
     .widget-panel { margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--line); }
     .widget-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
     .widget-controls select { width: 100%; padding: 8px 10px; }
@@ -275,6 +281,7 @@
               <option value="shortcut">단축어 실행</option>
               <option value="media">미디어</option>
               <option value="mic">마이크 토글</option>
+              <option value="multi">매크로 (연속 실행)</option>
             </select>
             <p class="action-help" id="actionHelp"></p>
           </div>
@@ -314,6 +321,16 @@
               <input id="keyArg" type="text" placeholder="예: t, space, `">
             </div>
           </div>
+          <div class="dynamic field" data-for="multi">
+            <label for="multiArg">매크로 단계 (한 줄에 하나씩, 위에서 아래로 실행)</label>
+            <textarea id="multiArg" spellcheck="false" style="min-height:110px" placeholder="app:Google Chrome
+delay:0.5
+keys:cmd+t
+text:claude.ai
+keys:return"></textarea>
+            <p class="action-help">사용 가능: app:이름 · url:주소 · keys:cmd+shift+t · text:문구 ·
+shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
+          </div>
           <div class="dynamic field" data-for="media">
             <label for="mediaArg">미디어 동작</label>
             <select id="mediaArg">
@@ -334,6 +351,18 @@
             <label for="iconArg">아이콘 (이모지 1개)</label>
             <input id="iconArg" type="text" placeholder="예: 🚀">
             <div class="icon-picker" id="iconPicker"></div>
+          </div>
+          <div class="field">
+            <span class="field-label">이미지 아이콘 (이모지 대신 사용)</span>
+            <div class="image-row">
+              <img id="imagePreview" alt="" hidden>
+              <button type="button" id="pickImageButton">이미지 선택…</button>
+              <button type="button" id="clearImageButton" hidden>제거</button>
+            </div>
+          </div>
+          <div class="actions secondary-actions">
+            <button type="button" id="copyButton">키 복사</button>
+            <button type="button" id="pasteButton" disabled>붙여넣기</button>
           </div>
           <div class="actions">
             <button type="button" id="saveButton">저장</button>
@@ -419,7 +448,8 @@
         shell: "터미널 명령을 실행합니다. 예: git pull",
         shortcut: "macOS 단축어 앱의 항목을 실행합니다. 예: 집중 모드 켜기",
         media: "재생과 음량 같은 시스템 미디어 키를 보냅니다. 예: 재생 / 일시정지",
-        mic: "기본 입력 장치의 음소거를 전환합니다. 예: 회의 중 마이크 끄기"
+        mic: "기본 입력 장치의 음소거를 전환합니다. 예: 회의 중 마이크 끄기",
+        multi: "여러 동작을 위에서 아래로 순서대로 실행합니다. delay로 간격 조절"
       };
       const PRESETS = [
         {
@@ -742,7 +772,7 @@
           if (info.switch) button.classList.add("switch");
           if (info.id === selectedId) button.classList.add("selected");
 
-          let icon = "", label = "미할당", idText = info.id || "";
+          let icon = "", image = null, label = "미할당", idText = info.id || "";
           if (info.switch) {
             label = "레이어 전환";
             idText = keymap.layerSwitchKey;
@@ -753,6 +783,7 @@
             const spec = effectiveSpec(info.id);
             if (spec) {
               icon = spec.icon || "";
+              image = spec.image || null;
               label = spec.label || fallbackLabel(spec);
               if (!ownSpec(info.id) && profileName !== "default") button.classList.add("inherited");
             } else {
@@ -761,7 +792,16 @@
           }
           button.innerHTML = `<span class="engraving"></span><span class="key-content"><span class="key-icon"></span><span class="key-label"></span><span class="key-id"></span></span>`;
           button.querySelector(".engraving").textContent = info.engraving;
-          button.querySelector(".key-icon").textContent = icon;
+          if (image) {
+            const img = document.createElement("img");
+            img.className = "key-img";
+            img.src = image;
+            img.alt = "";
+            img.addEventListener("error", () => { img.remove(); });
+            button.querySelector(".key-icon").appendChild(img);
+          } else {
+            button.querySelector(".key-icon").textContent = icon;
+          }
           button.querySelector(".key-label").textContent = label;
           button.querySelector(".key-id").textContent = idText;
           if (!info.disabled && !info.switch) {
@@ -775,8 +815,54 @@
 
       function fallbackLabel(spec) {
         if (spec.type === "mic") return "마이크";
+        if (spec.type === "multi") return `매크로(${(spec.steps || []).length})`;
         if (spec.type === "keys") return [...(spec.mods || []), spec.key || ""].filter(Boolean).join("+");
         return spec.arg || spec.type || "할당됨";
+      }
+
+      const stepToLine = step => {
+        if (step.type === "delay") return "delay:" + step.seconds;
+        if (step.type === "mic") return "mic";
+        if (step.type === "keys") return "keys:" + [...(step.mods || []), step.key].join("+");
+        return step.type + ":" + (step.arg || "");
+      };
+
+      const VALID_MODS = new Set(["cmd", "alt", "ctrl", "shift"]);
+      function parseSteps(textValue) {
+        const lines = textValue.split("\n").map(line => line.trim()).filter(Boolean);
+        if (!lines.length) throw new Error("매크로 단계를 1줄 이상 입력해 주세요.");
+        return lines.map((line, i) => {
+          const at = `${i + 1}번째 줄`;
+          if (line === "mic") return { type: "mic" };
+          const sep = line.indexOf(":");
+          if (sep < 1) throw new Error(`${at}: "종류:값" 형식이 아닙니다 — ${line}`);
+          const kind = line.slice(0, sep).trim().toLowerCase();
+          const value = line.slice(sep + 1).trim();
+          if (kind === "delay" || kind === "지연") {
+            const seconds = Number(value);
+            if (!(seconds >= 0 && seconds <= 60)) throw new Error(`${at}: 지연은 0~60초 사이 숫자`);
+            return { type: "delay", seconds };
+          }
+          if (kind === "keys") {
+            const parts = value.split("+").map(part => part.trim()).filter(Boolean);
+            const key = parts.pop();
+            if (!key) throw new Error(`${at}: 키가 없습니다`);
+            const bad = parts.find(mod => !VALID_MODS.has(mod));
+            if (bad) throw new Error(`${at}: 알 수 없는 보조 키 "${bad}"`);
+            return { type: "keys", mods: parts, key };
+          }
+          if (kind === "media") {
+            const upper = value.toUpperCase();
+            if (!["PLAY","PREVIOUS","NEXT","SOUND_UP","SOUND_DOWN","MUTE"].includes(upper))
+              throw new Error(`${at}: media 값은 PLAY/PREVIOUS/NEXT/SOUND_UP/SOUND_DOWN/MUTE`);
+            return { type: "media", arg: upper };
+          }
+          if (["app", "url", "text", "shell", "shortcut"].includes(kind)) {
+            if (!value) throw new Error(`${at}: 값이 비어 있습니다`);
+            return { type: kind, arg: value };
+          }
+          throw new Error(`${at}: 알 수 없는 종류 "${kind}"`);
+        });
       }
 
       function selectKey(id, engraving) {
@@ -799,6 +885,8 @@
         document.querySelectorAll('input[name="mod"]').forEach(input => { input.checked = false; });
         $("labelArg").value = spec && spec.label ? spec.label : "";
         $("iconArg").value = spec && spec.icon ? spec.icon : "";
+        $("multiArg").value = "";
+        setEditorImage(spec && spec.image ? spec.image : null);
         if (spec) {
           if (ARG_FIELDS[type]) $(ARG_FIELDS[type]).value = spec.arg || "";
           if (type === "keys") {
@@ -807,8 +895,24 @@
             document.querySelectorAll('input[name="mod"]').forEach(input => { input.checked = mods.has(input.value); });
           }
           if (type === "media") $("mediaArg").value = spec.arg || "PLAY";
+          if (type === "multi") $("multiArg").value = (spec.steps || []).map(stepToLine).join("\n");
         }
         updateDynamicFields();
+      }
+
+      let editorImage = null;
+      function setEditorImage(path) {
+        editorImage = path || null;
+        const preview = $("imagePreview");
+        if (editorImage) {
+          preview.src = editorImage;
+          preview.hidden = false;
+          $("clearImageButton").hidden = false;
+        } else {
+          preview.removeAttribute("src");
+          preview.hidden = true;
+          $("clearImageButton").hidden = true;
+        }
       }
 
       function updateDynamicFields() {
@@ -833,11 +937,14 @@
           if (!spec.key) throw new Error("키를 입력해 주세요.");
         } else if (type === "media") {
           spec.arg = $("mediaArg").value;
+        } else if (type === "multi") {
+          spec.steps = parseSteps($("multiArg").value);
         }
         const label = $("labelArg").value.trim();
         const icon = $("iconArg").value.trim();
         if (label) spec.label = label;
         if (icon) spec.icon = icon;
+        if (editorImage) spec.image = editorImage;
         return spec;
       }
 
@@ -920,6 +1027,29 @@
         button.setAttribute("aria-label", "아이콘 " + emoji);
         button.addEventListener("click", () => { $("iconArg").value = emoji; });
         iconPicker.appendChild(button);
+      });
+
+      $("pickImageButton").addEventListener("click", () => bridge({ action: "pickImage" }));
+      $("clearImageButton").addEventListener("click", () => setEditorImage(null));
+      window.k20ReceiveIcon = path => {
+        if (typeof path === "string" && path) setEditorImage(path);
+      };
+
+      let copiedSpec = null;
+      $("copyButton").addEventListener("click", () => {
+        if (!selectedId) return;
+        const spec = ownSpec(selectedId);
+        if (!spec) { window.alert("복사할 설정이 없습니다."); return; }
+        copiedSpec = clone(spec);
+        $("pasteButton").disabled = false;
+        $("status").textContent = "키 설정을 복사했습니다. 다른 키를 선택하고 붙여넣기.";
+      });
+      $("pasteButton").addEventListener("click", () => {
+        if (!selectedId || !copiedSpec) return;
+        currentProfile()[selectedId] = clone(copiedSpec);
+        renderKeypad();
+        fillEditor(currentProfile()[selectedId]);
+        saveKeymap();
       });
 
       $("layerColorInput").addEventListener("change", event => {
