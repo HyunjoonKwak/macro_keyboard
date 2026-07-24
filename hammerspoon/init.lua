@@ -4,7 +4,24 @@
 
 local HYPER = { "cmd", "alt", "ctrl" }
 local SHYPER = { "cmd", "alt", "ctrl", "shift" }
-local CONFIG_DIR = "/Users/specialrisk/code_work/macro_keyboard/hammerspoon/"
+
+-- ~/.hammerspoon/init.lua 심링크의 실제 위치에서 설정 폴더를 찾는다 (맥마다 경로가 달라도 동작).
+-- 심링크가 아니면(파일을 직접 복사한 경우) ~/.hammerspoon 자체를 사용.
+local function resolveConfigDir()
+  local link = hs.configdir .. "/init.lua"
+  local pipe = io.popen("readlink " .. string.format("%q", link) .. " 2>/dev/null")
+  local target = pipe and pipe:read("*l") or nil
+  if pipe then pipe:close() end
+  if target and #target > 0 then
+    if not target:match("^/") then
+      target = hs.configdir .. "/" .. target
+    end
+    local dir = target:match("^(.*)/[^/]+$")
+    if dir then return dir .. "/" end
+  end
+  return hs.configdir .. "/"
+end
+local CONFIG_DIR = resolveConfigDir()
 local KEYMAP_PATH = CONFIG_DIR .. "keymap.json"
 local UI_PATH = CONFIG_DIR .. "ui.html"
 

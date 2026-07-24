@@ -2,7 +2,7 @@ do shell script "open -ga Hammerspoon"
 set settingsOpened to false
 repeat 20 times
 	try
-		do shell script "/opt/homebrew/bin/hs -c 'k20OpenSettings()'"
+		do shell script "HS=/opt/homebrew/bin/hs; [ -x $HS ] || HS=/usr/local/bin/hs; $HS -c 'k20OpenSettings()'"
 		set settingsOpened to true
 		exit repeat
 	on error

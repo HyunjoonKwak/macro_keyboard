@@ -19,55 +19,41 @@ K20 (일반 모드, 숫자패드 키 전송)
 
 메인 키보드의 숫자키는 영향받지 않는다 (vendor_id/product_id로 기기 필터링).
 
-## 설치 순서
+## 설치 (다른 맥 포함)
 
-### 1. 도구 설치
-
-```bash
-brew install --cask karabiner-elements hammerspoon
-```
-
-설치 후 시스템 설정 > 개인정보 보호 및 보안 > 입력 모니터링/손쉬운 사용에서
-Karabiner와 Hammerspoon 권한 허용.
-
-### 2. K20 기기 ID 확인
-
-K20을 꽂고 **일반 모드**(매크로 스위치 OFF)로 둔 뒤:
-
-- Karabiner-EventViewer 앱 실행 → Devices 탭에서 K20의 Vendor ID / Product ID 확인
-- 또는 `./scripts/detect-keypad.sh` 실행
-
-확인한 값(10진수)으로 `karabiner/k20-rules.json` 안의 `9999` 자리(vendor_id/product_id)를
-전부 치환:
+터미널에서 한 줄이면 됩니다 — 필요한 앱 설치 유도부터 보안 승인 안내까지 마법사가 진행합니다:
 
 ```bash
-sed -i '' 's/"vendor_id": 9999/"vendor_id": <확인한값>/g; s/"product_id": 9999/"product_id": <확인한값>/g' karabiner/k20-rules.json
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/HyunjoonKwak/macro_keyboard/main/install.sh)"
 ```
 
-### 3. Karabiner 규칙 설치
+또는 저장소를 받아서:
 
 ```bash
-mkdir -p ~/.config/karabiner/assets/complex_modifications
-cp karabiner/k20-rules.json ~/.config/karabiner/assets/complex_modifications/
+git clone https://github.com/HyunjoonKwak/macro_keyboard.git && cd macro_keyboard && ./install.sh
 ```
 
-Karabiner-Elements 설정 → Complex Modifications → Add rule → "CROAD K20 → 스트림덱 키" 활성화.
+마법사가 하는 일: Homebrew·Karabiner-Elements·Hammerspoon 확인/설치 → 키 매핑 규칙 설치
+(기존 Karabiner 설정은 백업 후 병합) → 설정 연결 → macOS 보안 승인 3종 안내 →
+"K20 스트림덱.app" 런처 생성. 재실행해도 안전하다(멱등).
 
-주의: EventViewer에서 실제 키코드가 예상(keypad_0~9 등)과 다르면 json의 `from.key_code`를
-실제 값으로 수정. K20의 계산기/더블클릭 같은 특수키는 consumer 키코드일 수 있음.
+설치 후: K20을 USB로 연결(일반 모드)하면 바로 동작. 설정은 메뉴바 ⌨ 아이콘 또는
+"K20 스트림덱" 앱에서. `keymap.json`(개인 키 설정)은 git에 올라가지 않는다.
 
-### 4. Hammerspoon 설정 연결
+<details>
+<summary>수동 설치 (참고용)</summary>
 
-```bash
-cp hammerspoon/keymap.example.json hammerspoon/keymap.json
-mkdir -p ~/.hammerspoon && ln -sf "$(pwd)/hammerspoon/init.lua" ~/.hammerspoon/init.lua
-```
+1. `brew install --cask karabiner-elements hammerspoon`
+2. K20 연결 후 Karabiner-EventViewer의 Devices 탭에서 Vendor/Product ID 확인
+   (기본 규칙은 7276/49160 기준 — CROAD K20이면 그대로 사용)
+3. `cp karabiner/k20-rules.json ~/.config/karabiner/assets/complex_modifications/`
+   → Karabiner 설정 → Complex Modifications → Add rule로 활성화
+4. `cp hammerspoon/keymap.example.json hammerspoon/keymap.json`
+5. `ln -sf "$(pwd)/hammerspoon/init.lua" ~/.hammerspoon/init.lua`
+6. 시스템 설정에서 승인: 드라이버 확장(Karabiner), 입력 모니터링(karabiner_grabber),
+   손쉬운 사용(Hammerspoon)
 
-`keymap.json`은 개인 키 설정 파일이라 git에 올라가지 않는다 (예시는 `keymap.example.json`).
-키 배치는 설정 UI(메뉴바 ⌨ 아이콘 → 설정 열기)에서 편집한다 — 저장 즉시 반영.
-데스크톱 미니 위젯은 메뉴바 → 위젯 → 컴팩트/확장으로 켠다.
-
-Hammerspoon 실행 → 메뉴바 아이콘 → Reload Config. "K20 스트림덱 로드됨" 알림이 뜨면 성공.
+</details>
 
 ## 키 배치표 (2026-07-24 실측 기준)
 
