@@ -509,6 +509,7 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
       let selectedId = null;
       let layerMenuIndex = null;
       let colorLayerIndex = null;
+      let appIcons = {};
 
       const $ = id => document.getElementById(id);
       const bridge = payload => {
@@ -789,6 +790,9 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
             if (spec) {
               icon = spec.icon || "";
               image = spec.image || null;
+              if (!image && spec.type === "app" && !spec.icon && appIcons[spec.arg]) {
+                image = appIcons[spec.arg];
+              }
               label = spec.label || fallbackLabel(spec);
               if (!ownSpec(info.id) && profileName !== "default") button.classList.add("inherited");
             } else {
@@ -1053,6 +1057,11 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
       $("clearImageButton").addEventListener("click", () => setEditorImage(null));
       window.k20ReceiveIcon = path => {
         if (typeof path === "string" && path) setEditorImage(path);
+      };
+
+      window.k20ReceiveAppIcons = map => {
+        appIcons = (map && !Array.isArray(map)) ? map : {};
+        if (keymap) renderKeypad();
       };
 
       let copiedSpec = null;

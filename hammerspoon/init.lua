@@ -427,6 +427,46 @@ local function iconImage(relPath)
   return image
 end
 
+-- 앱 실행 액션: 설치된 앱의 실제 아이콘을 자동 추출해 사용
+local APP_DIRS = {
+  "/Applications/", "/System/Applications/",
+  "/Applications/Utilities/", "/System/Applications/Utilities/",
+}
+
+local function appIconImage(appName)
+  if type(appName) ~= "string" or appName == "" then return nil end
+  local key = "app:" .. appName
+  local cached = k20ImageCache[key]
+  if cached ~= nil then return cached or nil end
+  local image = nil
+  for _, dir in ipairs(APP_DIRS) do
+    local path = dir .. appName .. ".app"
+    if hs.fs.attributes(path) then
+      image = hs.image.iconForFile(path)
+      break
+    end
+  end
+  if not image then
+    local running = hs.application.get(appName)
+    local bundleID = running and running:bundleID() or nil
+    if bundleID then image = hs.image.imageFromAppBundle(bundleID) end
+  end
+  k20ImageCache[key] = image or false
+  return image
+end
+
+-- 설정 UI(웹뷰)용: 앱 아이콘을 icons/auto/에 PNG로 내보내고 상대 경로 반환
+local function ensureAppIconFile(appName)
+  local rel = "icons/auto/" .. appName:gsub("[^%w가-힣%-_%.]", "_") .. ".png"
+  if hs.fs.attributes(CONFIG_DIR .. rel) then return rel end
+  local image = appIconImage(appName)
+  if not image then return nil end
+  hs.execute(string.format("mkdir -p %q", CONFIG_DIR .. "icons/auto"), false)
+  local small = image:setSize({ w = 128, h = 128 })
+  if not (small and small:saveToFile(CONFIG_DIR .. rel, "png")) then return nil end
+  return rel
+end
+
 local WIDGET_MODE_KEY = "k20.widget.mode"
 local WIDGET_X_KEY = "k20.widget.x"
 local WIDGET_Y_KEY = "k20.widget.y"
@@ -495,6 +535,9 @@ local function buildKeypadElements(layer, frameOpts)
       local spec = defaultSpecs[keyInfo.id]
       micCell = spec.type == "mic"
       cellImage = spec.image and iconImage(spec.image) or nil
+      if not cellImage and spec.type == "app" and not spec.icon then
+        cellImage = appIconImage(spec.arg) -- 앱 실제 아이콘 자동 사용
+      end
       if cellImage then
         label = spec.label or ""
       else
@@ -980,6 +1023,29 @@ sendKeymapToUI = function()
   if cfgOk then
     k20Webview:evaluateJavaScript(
       "window.k20ReceiveWidgetConfig && window.k20ReceiveWidgetConfig(" .. cfg .. ");")
+  end
+  -- 앱 액션들의 자동 아이콘(PNG 추출본) 경로를 UI로 전달
+  local appIcons = {}
+  for _, layer in ipairs(k20RawKeymap.layers or {}) do
+    for _, profile in pairs(layer.profiles or {}) do
+      if type(profile) == "table" then
+        for _, spec in pairs(profile) do
+          if type(spec) == "table" and spec.type == "app" and type(spec.arg) == "string"
+              and not spec.image and not spec.icon and appIcons[spec.arg] == nil then
+            appIcons[spec.arg] = ensureAppIconFile(spec.arg) or false
+          end
+        end
+      end
+    end
+  end
+  local cleaned = {}
+  for name, rel in pairs(appIcons) do
+    if rel then cleaned[name] = rel end
+  end
+  local iconsOk, iconsJson = pcall(hs.json.encode, cleaned)
+  if iconsOk then
+    k20Webview:evaluateJavaScript(
+      "window.k20ReceiveAppIcons && window.k20ReceiveAppIcons(" .. iconsJson .. ");")
   end
 end
 
