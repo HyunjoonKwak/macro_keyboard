@@ -510,6 +510,94 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
             f15: { type: "url", arg: "https://claude.ai", label: "Claude 웹" },
             f19: { type: "text", arg: "me@example.com", label: "이메일" }
           }
+        },
+        {
+          name: "Zoom 회의",
+          description: "Zoom 전용 세트. 새 레이어로 추가하면 Zoom 실행 시 자동 전환됩니다.",
+          color: "#1a3a5c",
+          appTrigger: "zoom.us",
+          keys: {
+            f13: { type: "keys", mods: ["cmd", "shift"], key: "a", label: "음소거", icon: "🎙" },
+            f14: { type: "keys", mods: ["cmd", "shift"], key: "v", label: "비디오", icon: "📹" },
+            f15: { type: "keys", mods: ["cmd", "shift"], key: "s", label: "화면 공유", icon: "🖥️" },
+            f16: { type: "keys", mods: ["cmd", "shift"], key: "h", label: "채팅", icon: "💬" },
+            f17: { type: "keys", mods: ["cmd", "shift"], key: "r", label: "녹화", icon: "⏺️" },
+            f19: { type: "keys", mods: ["cmd"], key: "w", label: "회의 나가기", icon: "🚪" },
+            "s-hyper+f13": { type: "mic", label: "시스템 마이크" }
+          }
+        },
+        {
+          name: "창 배치",
+          description: "Magnet 기준 창 정렬 단축키. 좌/우 절반, 최대화, 가운데.",
+          color: "#3c3416",
+          keys: {
+            f16: { type: "keys", mods: ["ctrl", "alt"], key: "left", label: "왼쪽 절반", icon: "◀️" },
+            f18: { type: "keys", mods: ["ctrl", "alt"], key: "right", label: "오른쪽 절반", icon: "▶️" },
+            f14: { type: "keys", mods: ["ctrl", "alt"], key: "up", label: "위 절반", icon: "🔼" },
+            f20: { type: "keys", mods: ["ctrl", "alt"], key: "down", label: "아래 절반", icon: "🔽" },
+            f17: { type: "keys", mods: ["ctrl", "alt"], key: "return", label: "최대화", icon: "⛶" },
+            f13: { type: "keys", mods: ["ctrl", "alt"], key: "c", label: "가운데" },
+            f15: { type: "keys", mods: ["ctrl", "alt"], key: "delete", label: "이전 크기" }
+          }
+        },
+        {
+          name: "캡처·녹화",
+          description: "macOS 스크린샷과 화면 녹화를 한곳에.",
+          color: "#4a2020",
+          keys: {
+            f13: { type: "keys", mods: ["cmd", "shift"], key: "3", label: "전체 캡처", icon: "🖼️" },
+            f14: { type: "keys", mods: ["cmd", "shift"], key: "4", label: "영역 캡처", icon: "📸" },
+            f15: { type: "multi", label: "창 캡처", icon: "🪟",
+              steps: [
+                { type: "keys", mods: ["cmd", "shift"], key: "4" },
+                { type: "delay", seconds: 0.3 },
+                { type: "keys", mods: [], key: "space" }
+              ] },
+            f16: { type: "keys", mods: ["cmd", "shift"], key: "5", label: "녹화 패널", icon: "⏺️" },
+            f19: { type: "keys", mods: ["ctrl", "cmd", "shift"], key: "4", label: "영역→클립보드", icon: "📋" }
+          }
+        },
+        {
+          name: "Xcode",
+          description: "빌드·실행·테스트. 새 레이어로 추가하면 Xcode 실행 시 자동 전환됩니다.",
+          color: "#1f3a5f",
+          appTrigger: "Xcode",
+          keys: {
+            f13: { type: "keys", mods: ["cmd"], key: "r", label: "실행", icon: "▶️" },
+            f14: { type: "keys", mods: ["cmd"], key: "b", label: "빌드", icon: "🔨" },
+            f15: { type: "keys", mods: ["cmd"], key: ".", label: "정지", icon: "⏹️" },
+            f16: { type: "keys", mods: ["cmd", "shift"], key: "k", label: "클린" },
+            f17: { type: "keys", mods: ["cmd"], key: "u", label: "테스트", icon: "🧪" },
+            f18: { type: "keys", mods: ["cmd"], key: "/", label: "주석 토글" },
+            f19: { type: "keys", mods: ["cmd", "shift"], key: "o", label: "빠른 열기", icon: "🔍" }
+          }
+        },
+        {
+          name: "음악 (Spotify)",
+          description: "Spotify 실행과 재생·볼륨 제어.",
+          color: "#143d24",
+          keys: {
+            f13: { type: "app", arg: "Spotify", label: "Spotify" },
+            f14: { type: "media", arg: "PLAY", label: "재생", icon: "▶️" },
+            f15: { type: "media", arg: "NEXT", label: "다음 곡", icon: "⏭" },
+            f16: { type: "media", arg: "PREVIOUS", label: "이전 곡", icon: "⏮" },
+            f17: { type: "media", arg: "SOUND_DOWN", label: "볼륨 −", icon: "🔉" },
+            f18: { type: "media", arg: "SOUND_UP", label: "볼륨 +", icon: "🔊" },
+            f19: { type: "media", arg: "MUTE", label: "음소거", icon: "🔇" }
+          }
+        },
+        {
+          name: "자주 가는 웹",
+          description: "자주 여는 사이트 바로가기 묶음. 주소는 취향대로 수정하세요.",
+          color: "#333a5c",
+          keys: {
+            f13: { type: "url", arg: "https://claude.ai", label: "Claude", icon: "🤖" },
+            f14: { type: "url", arg: "https://github.com", label: "GitHub", icon: "🐙" },
+            f15: { type: "url", arg: "https://youtube.com", label: "YouTube", icon: "▶️" },
+            f16: { type: "url", arg: "https://mail.google.com", label: "Gmail", icon: "📧" },
+            f17: { type: "url", arg: "https://calendar.google.com", label: "캘린더", icon: "📅" },
+            f18: { type: "url", arg: "https://naver.com", label: "네이버", icon: "🟢" }
+          }
         }
       ];
 
@@ -770,10 +858,13 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
           add.type = "button";
           add.textContent = "새 레이어로 추가";
           add.addEventListener("click", () => {
-            keymap.layers.push({
+            const newLayer = {
               name: uniqueLayerName(preset.name),
               profiles: { default: clone(preset.keys) }
-            });
+            };
+            if (preset.color) newLayer.color = preset.color;
+            if (preset.appTrigger) newLayer.appTrigger = preset.appTrigger;
+            keymap.layers.push(newLayer);
             layerIndex = keymap.layers.length - 1;
             profileName = "default";
             selectedId = null;
