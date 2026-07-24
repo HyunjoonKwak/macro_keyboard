@@ -478,7 +478,26 @@ end
 
 local function widgetDimensions()
   if k20WidgetMode == "expanded" then return 360, 230 end
-  return 168, 36
+  return 190, 36
+end
+
+-- 드래그 대신: ✥ 클릭 시 네 모서리(우상→우하→좌하→좌상)를 순환 이동
+local WIDGET_CORNER_KEY = "k20.widget.corner"
+local function cycleWidgetPosition()
+  local width, height = widgetDimensions()
+  local sf = hs.screen.mainScreen():frame()
+  local corner = ((hs.settings.get(WIDGET_CORNER_KEY) or 1) % 4) + 1
+  hs.settings.set(WIDGET_CORNER_KEY, corner)
+  local m = 24
+  local pos = ({
+    { x = sf.x + sf.w - width - m, y = sf.y + m },
+    { x = sf.x + sf.w - width - m, y = sf.y + sf.h - height - m },
+    { x = sf.x + m, y = sf.y + sf.h - height - m },
+    { x = sf.x + m, y = sf.y + m },
+  })[corner]
+  hs.settings.set(WIDGET_X_KEY, pos.x)
+  hs.settings.set(WIDGET_Y_KEY, pos.y)
+  renderWidget()
 end
 
 local function widgetFrame()
@@ -573,6 +592,8 @@ local function widgetMouseCallback(_, message, elementId)
       k20OpenSettings()
     elseif target == "toggle" then
       setWidgetMode(k20WidgetMode == "expanded" and "compact" or "expanded")
+    elseif target == "move" then
+      cycleWidgetPosition()
     elseif target == "layer" or target == "layer-number" then
       setLayer(k20CurrentLayer % #k20Layers + 1, true)
     end
@@ -626,6 +647,7 @@ renderWidget = function()
     ))
     k20Widget:appendElements(trackedText("toggle", "▣", { x = 118, y = 8, w = 20, h = 20 }, 12))
     k20Widget:appendElements(trackedText("settings", "⛭", { x = 139, y = 7, w = 20, h = 22 }, 15))
+    k20Widget:appendElements(trackedText("move", "✥", { x = 160, y = 8, w = 20, h = 20 }, 13))
   else
     k20Widget:appendElements({
       type = "rectangle",
@@ -643,10 +665,11 @@ renderWidget = function()
     k20Widget:appendElements(trackedText(
       "layer",
       (CIRCLED_NUMBERS[k20CurrentLayer] or tostring(k20CurrentLayer)) .. "  " .. layer.name,
-      { x = 14, y = 9, w = 270, h = 22 },
+      { x = 14, y = 9, w = 252, h = 22 },
       14,
       "left"
     ))
+    k20Widget:appendElements(trackedText("move", "✥", { x = 272, y = 8, w = 22, h = 23 }, 14))
     k20Widget:appendElements(trackedText("settings", "⛭", { x = 300, y = 8, w = 24, h = 23 }, 16))
     k20Widget:appendElements(trackedText("toggle", "▁", { x = 329, y = 7, w = 20, h = 22 }, 16))
     for _, element in ipairs(buildKeypadElements(layer, {
@@ -793,6 +816,7 @@ local function createWebview()
   }, k20UserContentController)
   k20Webview:windowTitle("K20 스트림덱 설정")
   k20Webview:windowStyle({ "titled", "closable", "miniaturizable", "resizable" })
+  k20Webview:level(hs.drawing.windowLevels.normal) -- 일반 창처럼: 다른 창 뒤로 갈 수 있게
   k20Webview:allowTextEntry(true)
   k20Webview:closeOnEscape(true)
   k20Webview:deleteOnClose(false)
