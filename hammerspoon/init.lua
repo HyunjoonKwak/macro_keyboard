@@ -39,6 +39,7 @@ k20WidgetMode = nil
 k20WidgetLevel = nil
 k20WidgetFlashing = false
 k20WidgetDragState = nil
+k20WidgetDragTap = nil
 k20Hotkeys = {}
 k20RawKeymap = nil
 k20Layers = nil
@@ -551,6 +552,36 @@ local function selectWidgetKey(keyId)
   end)
 end
 
+-- 드래그는 캔버스 자체 mouseMove가 불안정해서, 누른 순간부터 전역 eventtap으로
+-- 마우스를 추적한다 (커서가 위젯 밖으로 나가도 계속 따라옴).
+local function stopWidgetDragTap()
+  if k20WidgetDragTap then
+    k20WidgetDragTap:stop()
+    k20WidgetDragTap = nil
+  end
+end
+
+local function startWidgetDragTap()
+  stopWidgetDragTap()
+  local types = hs.eventtap.event.types
+  k20WidgetDragTap = hs.eventtap.new({ types.leftMouseDragged }, function()
+    local state = k20WidgetDragState
+    if not state or not k20Widget then return false end
+    local mouse = hs.mouse.absolutePosition()
+    local dx = mouse.x - state.startX
+    local dy = mouse.y - state.startY
+    if math.abs(dx) + math.abs(dy) > 4 then state.dragged = true end
+    if state.dragged then
+      local frame = k20Widget:frame()
+      frame.x = mouse.x - state.offsetX
+      frame.y = mouse.y - state.offsetY
+      k20Widget:frame(frame)
+    end
+    return false
+  end)
+  k20WidgetDragTap:start()
+end
+
 local function widgetMouseCallback(_, message, elementId)
   local mouse = hs.mouse.absolutePosition()
   if message == "mouseDown" then
@@ -564,19 +595,11 @@ local function widgetMouseCallback(_, message, elementId)
       startY = mouse.y,
       dragged = false,
     }
-  elseif message == "mouseMove" and k20WidgetDragState and k20Widget then
-    local dx = mouse.x - k20WidgetDragState.startX
-    local dy = mouse.y - k20WidgetDragState.startY
-    if math.abs(dx) + math.abs(dy) > 4 then k20WidgetDragState.dragged = true end
-    if k20WidgetDragState.dragged then
-      local frame = k20Widget:frame()
-      frame.x = mouse.x - k20WidgetDragState.offsetX
-      frame.y = mouse.y - k20WidgetDragState.offsetY
-      k20Widget:frame(frame)
-    end
+    startWidgetDragTap()
   elseif message == "mouseUp" and k20WidgetDragState then
     local state = k20WidgetDragState
     k20WidgetDragState = nil
+    stopWidgetDragTap()
     if state.dragged and k20Widget then
       local frame = k20Widget:frame()
       hs.settings.set(WIDGET_X_KEY, frame.x)
@@ -827,7 +850,11 @@ function k20OpenSettings()
   -- 기존 webview도 파일 URL을 다시 로드해 ui.html 변경을 즉시 반영한다.
   k20Webview:url("file://" .. UI_PATH)
   k20Webview:show()
-  k20Webview:bringToFront(true)
+  -- bringToFront는 창을 항상-위 레벨로 바꿔버리므로 쓰지 않는다.
+  -- 일반 창 레벨을 유지한 채 포커스만 가져온다.
+  k20Webview:level(hs.drawing.windowLevels.normal)
+  local win = k20Webview:hswindow()
+  if win then win:focus() end
 end
 
 updateMenubar = function()
