@@ -178,6 +178,10 @@ local function validateKeymapForSave(keymap)
     if type(layer) ~= "table" or type(layer.name) ~= "string" or layer.name == "" then
       return false, "레이어 " .. layerIndex .. "의 name이 올바르지 않음"
     end
+    if layer.color ~= nil
+        and not (type(layer.color) == "string" and layer.color:match("^#%x%x%x%x%x%x$")) then
+      return false, layer.name .. "의 color는 #RRGGBB 형식이어야 함"
+    end
     if type(layer.profiles) ~= "table" then
       return false, layer.name .. "의 profiles가 객체가 아님"
     end
@@ -225,6 +229,9 @@ local function compileKeymap(raw)
       warn("레이어 " .. layerIndex .. " 형식이 잘못되어 건너뜀")
     else
       local layer = { name = layerSpec.name, profiles = {}, specs = {} }
+      if type(layerSpec.color) == "string" and layerSpec.color:match("^#%x%x%x%x%x%x$") then
+        layer.color = layerSpec.color
+      end
       for profileName, profileSpec in pairs(layerSpec.profiles) do
         if type(profileName) ~= "string" or profileName == "" or type(profileSpec) ~= "table" then
           warn(layerSpec.name .. "의 잘못된 프로필을 건너뜀")
@@ -320,6 +327,25 @@ local PHYSICAL_KEYS = {
 }
 
 local CIRCLED_NUMBERS = { "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩" }
+local WIDGET_ALPHA_KEY = "k20.widget.alpha"
+
+local function widgetAlpha()
+  local alpha = tonumber(hs.settings.get(WIDGET_ALPHA_KEY))
+  if not alpha then return 0.94 end
+  return math.max(0.2, math.min(1, alpha))
+end
+
+-- "#RRGGBB" → hs 색상 테이블 (brighten: 1보다 크면 밝게)
+local function hexToColor(hex, alpha, brighten)
+  local r, g, b = hex:match("^#(%x%x)(%x%x)(%x%x)$")
+  if not r then return nil end
+  local factor = brighten or 1
+  local function channel(v)
+    return math.min(1, (tonumber(v, 16) / 255) * factor)
+  end
+  return { red = channel(r), green = channel(g), blue = channel(b), alpha = alpha or 1 }
+end
+
 local WIDGET_MODE_KEY = "k20.widget.mode"
 local WIDGET_X_KEY = "k20.widget.x"
 local WIDGET_Y_KEY = "k20.widget.y"
@@ -440,7 +466,8 @@ local function showHud()
   k20HudCanvas:appendElements({
     type = "rectangle",
     action = "fill",
-    fillColor = { red = 0.07, green = 0.08, blue = 0.11, alpha = 0.94 },
+    fillColor = (layer.color and hexToColor(layer.color, 0.94))
+        or { red = 0.07, green = 0.08, blue = 0.11, alpha = 0.94 },
     roundedRectRadii = { xRadius = 18, yRadius = 18 },
     frame = { x = 0, y = 0, w = width, h = height },
   })
@@ -636,9 +663,15 @@ renderWidget = function()
   k20Widget:canvasMouseEvents(true, true, false, true)
   k20Widget:mouseCallback(widgetMouseCallback)
 
-  local baseColor = k20WidgetFlashing
-      and { red = 0.19, green = 0.22, blue = 0.36, alpha = 0.98 }
-      or { red = 0.07, green = 0.08, blue = 0.11, alpha = 0.94 }
+  local alpha = widgetAlpha()
+  local layerColor = layer.color and hexToColor(layer.color, alpha) or nil
+  local baseColor
+  if k20WidgetFlashing then
+    baseColor = (layer.color and hexToColor(layer.color, math.min(1, alpha + 0.04), 1.6))
+        or { red = 0.19, green = 0.22, blue = 0.36, alpha = math.min(1, alpha + 0.04) }
+  else
+    baseColor = layerColor or { red = 0.07, green = 0.08, blue = 0.11, alpha = alpha }
+  end
   k20Widget:appendElements({
     type = "rectangle",
     id = "background",
@@ -677,8 +710,10 @@ renderWidget = function()
       id = "header",
       action = "fill",
       fillColor = k20WidgetFlashing
-          and { red = 0.27, green = 0.31, blue = 0.5, alpha = 0.92 }
-          or { red = 0.12, green = 0.14, blue = 0.2, alpha = 0.92 },
+          and ((layer.color and hexToColor(layer.color, 0.92, 1.9))
+            or { red = 0.27, green = 0.31, blue = 0.5, alpha = 0.92 })
+          or ((layer.color and hexToColor(layer.color, 0.92, 1.35))
+            or { red = 0.12, green = 0.14, blue = 0.2, alpha = 0.92 }),
       roundedRectRadii = { xRadius = 14, yRadius = 14 },
       frame = { x = 0, y = 0, w = frame.w, h = 39 },
       trackMouseDown = true,
@@ -753,6 +788,22 @@ resetWidgetPosition = function()
   renderWidget()
 end
 
+-- 설정 UI에서 위젯 모드/레벨/투명도를 변경할 때 호출됨
+function k20ApplyWidgetConfig(config)
+  if type(config) ~= "table" then return end
+  local alpha = tonumber(config.alpha)
+  if alpha then
+    hs.settings.set(WIDGET_ALPHA_KEY, math.max(0.2, math.min(1, alpha)))
+  end
+  if config.mode and VALID_WIDGET_MODES[config.mode] and config.mode ~= k20WidgetMode then
+    setWidgetMode(config.mode)
+  end
+  if config.level and VALID_WIDGET_LEVELS[config.level] and config.level ~= k20WidgetLevel then
+    setWidgetLevel(config.level)
+  end
+  renderWidget()
+end
+
 setLayer = function(index, announce)
   if not k20Layers[index] then return end
   k20CurrentLayer = index
@@ -777,6 +828,13 @@ sendKeymapToUI = function()
   local ok, encoded = pcall(hs.json.encode, k20RawKeymap, true)
   if not ok then warn("UI로 설정을 보낼 수 없음") return end
   k20Webview:evaluateJavaScript("window.k20ReceiveKeymap(" .. encoded .. ");")
+  local cfgOk, cfg = pcall(hs.json.encode, {
+    mode = k20WidgetMode, level = k20WidgetLevel, alpha = widgetAlpha(),
+  })
+  if cfgOk then
+    k20Webview:evaluateJavaScript(
+      "window.k20ReceiveWidgetConfig && window.k20ReceiveWidgetConfig(" .. cfg .. ");")
+  end
 end
 
 local function saveKeymap(keymap)
@@ -818,6 +876,8 @@ local function handleUIMessage(message)
     sendKeymapToUI()
   elseif body.action == "save" then
     saveKeymap(body.keymap)
+  elseif body.action == "widget" then
+    k20ApplyWidgetConfig(body.config)
   else
     warn("알 수 없는 UI 요청")
   end

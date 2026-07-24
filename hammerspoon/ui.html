@@ -60,6 +60,11 @@
       white-space: nowrap;
     }
     .tab.active { padding-right: 34px; background: var(--accent-soft); border-color: var(--accent); }
+    .tab-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 0; }
+    .widget-panel { margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--line); }
+    .widget-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
+    .widget-controls select { width: 100%; padding: 8px 10px; }
+    .widget-panel input[type="range"] { width: 100%; }
     .tab-more {
       position: absolute;
       top: 3px;
@@ -331,16 +336,35 @@
             <button type="button" id="clearButton">할당 해제</button>
           </div>
         </form>
+
+        <div class="widget-panel">
+          <div class="field-label">데스크톱 위젯</div>
+          <div class="widget-controls">
+            <select id="widgetMode" aria-label="위젯 모드">
+              <option value="hidden">숨김</option>
+              <option value="compact">컴팩트</option>
+              <option value="expanded">확장</option>
+            </select>
+            <select id="widgetLevel" aria-label="위젯 표시 레벨">
+              <option value="top">항상 위</option>
+              <option value="desktop">데스크톱 고정</option>
+            </select>
+          </div>
+          <label class="field-label" for="widgetAlpha">불투명도 <span id="widgetAlphaOut"></span></label>
+          <input type="range" id="widgetAlpha" min="30" max="100" step="5" value="94">
+        </div>
       </aside>
     </main>
   </div>
   <div class="status" id="status">설정을 불러오는 중…</div>
   <div class="layer-menu" id="layerMenu" hidden>
     <button type="button" data-layer-action="rename">이름 변경</button>
+    <button type="button" data-layer-action="color">색상 변경</button>
     <button type="button" data-layer-action="left">← 이동</button>
     <button type="button" data-layer-action="right">→ 이동</button>
     <button type="button" class="danger" data-layer-action="delete">삭제</button>
   </div>
+  <input type="color" id="layerColorInput" style="position:fixed; left:-100px; top:-100px; width:1px; height:1px; opacity:0;">
   <div class="modal-overlay" id="modalOverlay" hidden>
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-header">
@@ -445,6 +469,7 @@
       let profileName = "default";
       let selectedId = null;
       let layerMenuIndex = null;
+      let colorLayerIndex = null;
 
       const $ = id => document.getElementById(id);
       const bridge = payload => {
@@ -473,8 +498,14 @@
           wrap.className = "tab-wrap";
           const button = document.createElement("button");
           button.className = "tab" + (index === layerIndex ? " active" : "");
-          button.textContent = layer.name;
           button.type = "button";
+          if (layer.color) {
+            const dot = document.createElement("span");
+            dot.className = "tab-dot";
+            dot.style.background = layer.color;
+            button.appendChild(dot);
+          }
+          button.appendChild(document.createTextNode(layer.name));
           button.addEventListener("click", () => {
             closeLayerMenu();
             if (layerIndex === index) return;
@@ -553,6 +584,13 @@
           const name = window.prompt("레이어 이름을 입력하세요.", layer.name);
           if (!name || !name.trim()) return;
           layer.name = name.trim();
+        } else if (action === "color") {
+          const input = $("layerColorInput");
+          input.value = layer.color || "#20232d";
+          colorLayerIndex = index;
+          closeLayerMenu();
+          input.click();
+          return;
         } else if (action === "left" && index > 0) {
           [keymap.layers[index - 1], keymap.layers[index]] = [keymap.layers[index], keymap.layers[index - 1]];
           layerIndex = index - 1;
@@ -859,6 +897,37 @@
       $("clearButton").addEventListener("click", clearSelection);
       $("presetButton").addEventListener("click", showPresets);
       $("helpButton").addEventListener("click", showHelp);
+
+      $("layerColorInput").addEventListener("change", event => {
+        if (colorLayerIndex === null || !keymap.layers[colorLayerIndex]) return;
+        keymap.layers[colorLayerIndex].color = event.target.value;
+        colorLayerIndex = null;
+        renderAll();
+        saveKeymap();
+      });
+
+      const sendWidgetConfig = () => {
+        bridge({ action: "widget", config: {
+          mode: $("widgetMode").value,
+          level: $("widgetLevel").value,
+          alpha: Number($("widgetAlpha").value) / 100,
+        } });
+      };
+      $("widgetMode").addEventListener("change", sendWidgetConfig);
+      $("widgetLevel").addEventListener("change", sendWidgetConfig);
+      $("widgetAlpha").addEventListener("input", () => {
+        $("widgetAlphaOut").textContent = $("widgetAlpha").value + "%";
+      });
+      $("widgetAlpha").addEventListener("change", sendWidgetConfig);
+
+      window.k20ReceiveWidgetConfig = config => {
+        if (!config) return;
+        if (config.mode) $("widgetMode").value = config.mode;
+        if (config.level) $("widgetLevel").value = config.level;
+        const pct = Math.round((config.alpha || 0.94) * 100);
+        $("widgetAlpha").value = pct;
+        $("widgetAlphaOut").textContent = pct + "%";
+      };
       $("modalClose").addEventListener("click", closeModal);
       $("modalOverlay").addEventListener("click", event => {
         if (event.target === $("modalOverlay")) closeModal();
