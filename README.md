@@ -1,23 +1,24 @@
 # CROAD K20 → 맥용 스트림덱
 
-씽크웨이 CROAD K20 매크로 키패드(21키)를 macOS에서 스트림덱처럼 쓰기 위한 설정.
+씽크웨이 CROAD K20 매크로 키패드(21키)를 macOS에서 스트림덱처럼 쓰는 프로젝트.
+Karabiner-Elements(키 변환)와 Hammerspoon(엔진·UI) 위에서 동작하며,
+설정은 GUI로 편집하고 파일(`keymap.json`) 하나로 관리된다.
 
-## 배경: K20의 특성
+## 주요 기능
 
-- 전용 "키보드 매니저" 소프트웨어는 **Windows 전용** (맥용 없음).
-- 하지만 **일반 모드에서는 평범한 USB 숫자패드**로 동작 → 맥에서 Karabiner로 처리 가능.
-- 매크로 모드로 저장한 하드웨어 매크로는 온보드 재생이라 이론상 맥에서도 동작하지만,
-  녹화/수정에 Windows가 필요하므로 이 프로젝트는 **일반 모드 + 맥 소프트웨어 조합**을 사용한다.
-
-## 아키텍처
-
-```
-K20 (일반 모드, 숫자패드 키 전송)
-  → Karabiner-Elements: K20 기기에서 온 입력만 F13~F20 × (Hyper·Shift+Hyper) 조합으로 변환
-  → Hammerspoon: 레이어 × 앱별 프로필 → 액션 실행
-```
-
-메인 키보드의 숫자키는 영향받지 않는다 (vendor_id/product_id로 기기 필터링).
+- **레이어**: 키 세트 여러 벌을 `+` 키로 순환, 직행 키·메뉴바·위젯으로도 전환. 레이어별 색상
+- **앱 자동 전환 (스마트 프로필)**: 레이어에 앱을 연결하면 그 앱이 앞으로 올 때
+  키패드 전체가 자동 전환, 떠나면 복귀. 한 앱에 여러 세트 연결 가능
+- **앱 프로필**: 같은 레이어 안에서 특정 앱이 앞에 있을 때만 일부 키를 덮어쓰기
+- **액션 10종**: 앱 실행 · URL · 키 조합 · 텍스트 입력 · 셸 명령 · macOS 단축어 ·
+  미디어 · 마이크 토글 · 레이어 이동 · 매크로(연속 실행, delay 지원)
+- **길게 누르기**: 한 키에 짧게/길게(0.45초) 두 가지 동작
+- **아이콘**: 이모지 팔레트, 이미지 파일(jpg/png 등), 앱 실행 키는 실제 앱 아이콘 자동 표시
+- **상태 아이콘**: 마이크 키는 음소거 상태에 따라 빨강/초록 + 🎙/🔇 실시간 반영
+- **설정 UI**: 실물 배치 그대로의 편집 화면, 프리셋 18종, 키 복사/붙여넣기, 도움말
+- **데스크톱 위젯**: 컴팩트/확장 모드, 자유 드래그, 항상 위/데스크톱 고정, 불투명도 조절,
+  K20 연결 시 자동 표시·분리 시 자동 숨김
+- **레이어 HUD**: 위젯이 꺼져 있으면 레이어 전환 순간 1.5초 미니맵 표시
 
 ## 설치 (다른 맥 포함)
 
@@ -37,9 +38,6 @@ git clone https://github.com/HyunjoonKwak/macro_keyboard.git && cd macro_keyboar
 (기존 Karabiner 설정은 백업 후 병합) → 설정 연결 → macOS 보안 승인 3종 안내 →
 "K20 스트림덱.app" 런처 생성. 재실행해도 안전하다(멱등).
 
-설치 후: K20을 USB로 연결(일반 모드)하면 바로 동작. 설정은 메뉴바 ⌨ 아이콘 또는
-"K20 스트림덱" 앱에서. `keymap.json`(개인 키 설정)은 git에 올라가지 않는다.
-
 <details>
 <summary>수동 설치 (참고용)</summary>
 
@@ -55,13 +53,38 @@ git clone https://github.com/HyunjoonKwak/macro_keyboard.git && cd macro_keyboar
 
 </details>
 
-## 키 배치표 (2026-07-24 실측 기준)
+## 구성 요소
 
-macOS 가상 키코드는 **F20까지만 존재**하므로 F21~F24는 쓰지 않고,
-F13~F20 × (없음 / Hyper / Shift+Hyper) 조합으로 24슬롯을 만든다.
-Hammerspoon에서 쓰는 키 ID는 `f13`~`f20`, `hyper+f13`~, `s-hyper+f13`~ 형식.
+| 구성 요소 | 역할 |
+|---|---|
+| K20 스트림덱.app | Launchpad/Dock에서 실행하는 런처 — 설정 창을 연다 |
+| 메뉴바 `⌨①` | 현재 레이어 표시, 레이어 점프, 설정 열기, 위젯 제어 |
+| 데스크톱 위젯 | 상시 키 배치 표시(스트림덱 LCD 대용), 키 클릭 → 편집 진입 |
+| Hammerspoon | 엔진 — 로그인 시 자동 시작, K20 연결/분리 자동 감지 |
+| Karabiner-Elements | K20 전용 키 변환 — 메인 키보드에는 영향 없음 |
 
-물리 배치 (실측, 6행×4열 — `+`와 `Enter`는 세로 2칸, `0`은 가로 2칸):
+시스템은 상주형이라 K20을 언제 꽂아도 즉시 동작한다.
+
+## 사용법
+
+- **키 설정**: "K20 스트림덱" 앱(또는 메뉴바 → 설정 열기) → 배치도에서 키 클릭 →
+  동작·라벨·아이콘 편집 → 저장하면 **재시작 없이 즉시 반영**
+- **레이어 관리**: 상단 탭 `+`로 추가, 활성 탭 `⋯`에서 이름 변경·색상·앱 연결·이동·삭제
+- **프리셋**: "프리셋" 버튼 → 18종(Zoom·Xcode·Chrome·Keynote·CapCut·PowerPoint·Excel·
+  iMovie·GarageBand·창 배치·캡처 등) → "새 레이어로 추가"하면 색상·앱 자동 연결까지 세팅
+- **앱 프로필**: 프로필 드롭다운 → "+ 앱 프로필 추가" → 설치 앱 목록에서 선택
+- **매크로 문법**: 한 줄에 하나씩 — `app:이름` `url:주소` `keys:cmd+shift+t` `text:문구`
+  `shell:명령` `shortcut:단축어` `media:PLAY` `mic` `layer:이름` `delay:0.5`
+- **길게 누르기**: 키 편집의 "길게 누르기 동작"에 같은 문법으로 입력 (여러 개는 `;` 구분)
+- **위젯**: 드래그로 이동, `✥` 모서리 순환, `▣` 확장/축소, `⛭` 설정.
+  모드·표시 레벨·불투명도는 설정 창 우측 하단 패널에서 조절
+
+## 키 배치표 (실측 기준)
+
+macOS 가상 키코드는 **F20까지만 존재**하므로 F13~F20 × (없음 / Hyper / Shift+Hyper)
+조합으로 24슬롯을 만든다. 키 ID는 `f13`~`f20`, `hyper+f13`~, `s-hyper+f13`~ 형식.
+
+물리 배치 (6행×4열 — `+`와 `Enter`는 세로 2칸, `0`은 가로 2칸):
 
 ```
 [Esc     ] [Tab     ] [⌫       ] [Fn      ]
@@ -88,31 +111,26 @@ Hammerspoon에서 쓰는 키 ID는 `f13`~`f20`, `hyper+f13`~, `s-hyper+f13`~ 형
 | Num | 마우스 인터페이스로 특수 신호 전송 — Karabiner가 흡수 (무해) | 사용 불가 |
 
 NumLock 상태와 무관하게 같은 물리 키는 같은 키 ID로 수렴하도록 양쪽 코드를 모두 매핑했다.
-Num 키를 눌러도 (hyper+f13 발동 + 펌웨어 NumLock 토글) 배치는 변하지 않는다.
 
-어느 물리 키가 어떤 ID인지 헷갈리면 그냥 눌러보면 된다 —
-미할당 키는 화면에 `① 일반 · s-hyper+f15 (미할당)` 식으로 키 ID가 뜬다.
+## 파일 구조
 
-## 단독 앱처럼 실행하기
-
-`scripts/k20-launcher.applescript`를 앱으로 컴파일하면 Launchpad/Spotlight에서
-실행하는 런처 앱이 된다 (엔진이 꺼져 있으면 켜고 설정 창을 연다):
-
-```bash
-osacompile -o "/Applications/K20 스트림덱.app" scripts/k20-launcher.applescript
+```
+install.sh                        설치 마법사 (대화형, 멱등)
+karabiner/k20-rules.json          K20 전용 리매핑 규칙 (기기 필터링)
+hammerspoon/init.lua              엔진: 디스패치·위젯·HUD·메뉴바·브리지
+hammerspoon/ui.html               설정 UI (webview)
+hammerspoon/keymap.example.json   예시 키맵 — 복사해서 keymap.json으로 사용
+hammerspoon/keymap.json           개인 키맵 (git 제외)
+hammerspoon/icons/                이미지 아이콘 저장소 (git 제외, auto/는 앱 아이콘 캐시)
+scripts/k20-launcher.applescript  런처 앱 소스
+scripts/detect-keypad.sh          기기 ID 탐지 보조
 ```
 
-## 사용법
+## 문제 해결
 
-- 키 배치/액션은 전부 `hammerspoon/init.lua`의 `LAYERS` 테이블에서 수정.
-  파일 저장하면 자동 리로드된다.
-- `hyper+f17` 키(기본: 키패드 좌상단 쪽) = 레이어 순환 전환.
-- 앱별 프로필: `profiles["앱이름"]`에 키를 정의하면 그 앱이 앞에 있을 때 우선 적용,
-  없으면 `default`로 폴백.
-
-## 확장 아이디어
-
-- OBS 제어: obs-websocket + `hs.execute` curl 호출로 장면 전환
-- 짧게/길게 누르기 구분: `hs.eventtap`으로 keyDown/keyUp 간격 측정
-- macOS 단축어 연동: `shortcuts run '단축어이름'` → HomeKit/집중모드까지 제어
-- 창 배치: `hs.window` API로 좌/우 절반, 모니터 이동
+- **키패드 무반응**: 메뉴바에 `⌨` 아이콘이 있는지 확인 → 없으면 Spotlight에서
+  Hammerspoon 실행. 매크로 스위치가 일반 모드(OFF)인지 확인
+- **메뉴바 아이콘이 안 보임**: 아이콘이 많으면 macOS가 노치 뒤로 숨긴다 —
+  위젯이 같은 기능을 하므로 위젯 사용 권장 (또는 메뉴바 정리 앱 사용)
+- **설정 즉시 반영 안 됨**: Hammerspoon 메뉴바(해머 아이콘) → Reload Config
+- **CLI 진단**: `hs -c "return #k20Layers"` 로 엔진 상태 확인 가능 (hs.ipc 활성화됨)
