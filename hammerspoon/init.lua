@@ -943,6 +943,9 @@ setWidgetMode = function(mode)
   end
   k20WidgetMode = mode
   hs.settings.set(WIDGET_MODE_KEY, mode)
+  if mode ~= "hidden" then
+    hs.settings.set("k20.widget.lastVisible", mode) -- 연결 시 자동 복원용
+  end
   k20WidgetFlashing = false
   if mode ~= "hidden" then hideHud() end
   renderWidget()
@@ -1334,16 +1337,38 @@ syncMicState()
 k20MicPollTimer = hs.timer.doEvery(5, syncMicState)
 
 -- K20 연결/분리 감지 (vendor 7276 / product 49160)
+-- 연결되면 위젯 자동 표시(마지막 표시 모드로), 분리되면 자동 숨김
+local function k20Connected()
+  for _, device in ipairs(hs.usb.attachedDevices() or {}) do
+    if device.vendorID == 7276 and device.productID == 49160 then return true end
+  end
+  return false
+end
+
 k20UsbWatcher = hs.usb.watcher.new(function(event)
   if event.vendorID == 7276 and event.productID == 49160 then
     if event.eventType == "added" then
       hs.alert.show("⌨️ K20 연결됨 · " .. (k20Layers[k20CurrentLayer] and k20Layers[k20CurrentLayer].name or ""))
+      if k20WidgetMode == "hidden" then
+        setWidgetMode(hs.settings.get("k20.widget.lastVisible") or "compact")
+      end
     elseif event.eventType == "removed" then
       hs.alert.show("⌨️ K20 분리됨")
+      if k20WidgetMode ~= "hidden" then
+        local remembered = hs.settings.get("k20.widget.lastVisible")
+        setWidgetMode("hidden")
+        -- setWidgetMode("hidden")은 lastVisible을 건드리지 않으므로 복원값 유지됨
+        if remembered then hs.settings.set("k20.widget.lastVisible", remembered) end
+      end
     end
   end
 end)
 k20UsbWatcher:start()
+
+-- 시작 시점에 키패드가 없으면 위젯도 숨김 상태로 시작
+if k20WidgetMode ~= "hidden" and not k20Connected() then
+  setWidgetMode("hidden")
+end
 renderWidget()
 
 local function reloadOnLuaChange(files)
