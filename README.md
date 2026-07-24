@@ -107,6 +107,15 @@ Num 키를 눌러도 (hyper+f13 발동 + 펌웨어 NumLock 토글) 배치는 변
 어느 물리 키가 어떤 ID인지 헷갈리면 그냥 눌러보면 된다 —
 미할당 키는 화면에 `① 일반 · s-hyper+f15 (미할당)` 식으로 키 ID가 뜬다.
 
+## 단독 앱처럼 실행하기
+
+`scripts/k20-launcher.applescript`를 앱으로 컴파일하면 Launchpad/Spotlight에서
+실행하는 런처 앱이 된다 (엔진이 꺼져 있으면 켜고 설정 창을 연다):
+
+```bash
+osacompile -o "/Applications/K20 스트림덱.app" scripts/k20-launcher.applescript
+```
+
 ## 사용법
 
 - 키 배치/액션은 전부 `hammerspoon/init.lua`의 `LAYERS` 테이블에서 수정.
