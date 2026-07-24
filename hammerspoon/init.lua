@@ -250,6 +250,10 @@ local function validateKeymapForSave(keymap)
         and not (type(layer.color) == "string" and layer.color:match("^#%x%x%x%x%x%x$")) then
       return false, layer.name .. "의 color는 #RRGGBB 형식이어야 함"
     end
+    if layer.appTrigger ~= nil
+        and not (type(layer.appTrigger) == "string" and layer.appTrigger ~= "") then
+      return false, layer.name .. "의 appTrigger는 앱 이름 문자열이어야 함"
+    end
     if type(layer.profiles) ~= "table" then
       return false, layer.name .. "의 profiles가 객체가 아님"
     end
@@ -299,6 +303,9 @@ local function compileKeymap(raw)
       local layer = { name = layerSpec.name, profiles = {}, specs = {} }
       if type(layerSpec.color) == "string" and layerSpec.color:match("^#%x%x%x%x%x%x$") then
         layer.color = layerSpec.color
+      end
+      if type(layerSpec.appTrigger) == "string" and layerSpec.appTrigger ~= "" then
+        layer.appTrigger = layerSpec.appTrigger
       end
       for profileName, profileSpec in pairs(layerSpec.profiles) do
         if type(profileName) ~= "string" or profileName == "" or type(profileSpec) ~= "table" then
@@ -975,8 +982,56 @@ setLayer = function(index, announce)
 end
 
 local function switchLayer()
+  k20AutoLayerActive = false -- 수동 전환 시 자동 복귀 모드 해제 (사용자 제어 우선)
   setLayer(k20CurrentLayer % #k20Layers + 1, true)
 end
+
+-- ===========================================================================
+-- 앱 연결 레이어: 특정 앱이 앞으로 오면 그 앱의 레이어로 자동 전환,
+-- 떠나면 원래 레이어로 복귀 (스트림덱의 스마트 프로필)
+-- ===========================================================================
+k20AutoLayerActive = k20AutoLayerActive or false
+k20ReturnLayer = k20ReturnLayer or nil
+
+local function onAppActivated(appName)
+  if not k20Layers then return end
+  local current = k20Layers[k20CurrentLayer]
+  -- 이미 이 앱에 연결된 레이어에 있으면 유지 (한 앱의 2번째 세트 사용 중 등)
+  if current and current.appTrigger == appName then
+    k20AutoLayerActive = true
+    return
+  end
+  local target = nil
+  for index, layer in ipairs(k20Layers) do
+    if layer.appTrigger == appName then
+      target = index
+      break
+    end
+  end
+  if target then
+    if not k20AutoLayerActive and current and not current.appTrigger then
+      k20ReturnLayer = k20CurrentLayer
+    end
+    k20AutoLayerActive = true
+    setLayer(target, false)
+  elseif k20AutoLayerActive then
+    -- 연결 앱을 떠남 → 원래 레이어로 복귀
+    k20AutoLayerActive = false
+    local back = k20ReturnLayer
+    if back and k20Layers[back] and not k20Layers[back].appTrigger then
+      setLayer(back, false)
+    else
+      setLayer(1, false)
+    end
+  end
+end
+
+k20AppWatcher = hs.application.watcher.new(function(appName, eventType)
+  if eventType == hs.application.watcher.activated and appName then
+    onAppActivated(appName)
+  end
+end)
+k20AppWatcher:start()
 
 -- 길게 누르기: hold 동작이 있는 키는 눌림/뗌을 구분해 처리한다.
 -- hold가 없는 키는 기존처럼 누르는 즉시 실행 (지연 없음).

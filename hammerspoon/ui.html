@@ -398,6 +398,7 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
   <div class="layer-menu" id="layerMenu" hidden>
     <button type="button" data-layer-action="rename">이름 변경</button>
     <button type="button" data-layer-action="color">색상 변경</button>
+    <button type="button" data-layer-action="appLink">앱 연결…</button>
     <button type="button" data-layer-action="left">← 이동</button>
     <button type="button" data-layer-action="right">→ 이동</button>
     <button type="button" class="danger" data-layer-action="delete">삭제</button>
@@ -545,7 +546,9 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
             dot.style.background = layer.color;
             button.appendChild(dot);
           }
-          button.appendChild(document.createTextNode(layer.name));
+          button.appendChild(document.createTextNode(
+            layer.name + (layer.appTrigger ? " ⇄" : "")));
+          if (layer.appTrigger) button.title = layer.appTrigger + " 활성화 시 자동 전환";
           button.addEventListener("click", () => {
             closeLayerMenu();
             if (layerIndex === index) return;
@@ -631,6 +634,13 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
           closeLayerMenu();
           input.click();
           return;
+        } else if (action === "appLink") {
+          const name = window.prompt(
+            "이 레이어로 자동 전환할 앱 이름을 입력하세요.\n(그 앱이 앞으로 오면 키패드가 이 레이어로 바뀝니다. 비우면 연결 해제)",
+            layer.appTrigger || "");
+          if (name === null) return;
+          if (name.trim()) layer.appTrigger = name.trim();
+          else delete layer.appTrigger;
         } else if (action === "left" && index > 0) {
           [keymap.layers[index - 1], keymap.layers[index]] = [keymap.layers[index], keymap.layers[index - 1]];
           layerIndex = index - 1;
