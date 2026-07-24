@@ -84,11 +84,15 @@ local function media(key)
   end
 end
 
+k20MicMuted = k20MicMuted or false
+
 local function micToggle()
   local dev = hs.audiodevice.defaultInputDevice()
   local muted = not dev:muted()
   dev:setMuted(muted)
-  hs.alert.show(muted and "🎙 마이크 OFF" or "🎙 마이크 ON")
+  k20MicMuted = muted
+  hs.alert.show(muted and "🔇 마이크 OFF" or "🎙 마이크 ON")
+  if k20RefreshViews then k20RefreshViews() end -- 위젯의 마이크 상태 아이콘 갱신
 end
 
 -- ===========================================================================
@@ -133,6 +137,13 @@ local function validateActionSpec(spec)
       return false, "image는 icons/ 아래 상대 경로여야 함"
     end
   end
+  if spec.hold ~= nil then
+    if type(spec.hold) ~= "table" then return false, "hold 형식 오류" end
+    if spec.hold.hold ~= nil then return false, "hold 안에 hold는 넣을 수 없음" end
+    if spec.hold.type == "delay" then return false, "hold는 지연만으로는 안 됨" end
+    local valid, reason = validateActionSpec(spec.hold)
+    if not valid then return false, "길게 누르기: " .. reason end
+  end
 
   if spec.type == "multi" then
     if type(spec.steps) ~= "table" or #spec.steps == 0 then
@@ -141,6 +152,7 @@ local function validateActionSpec(spec)
     if #spec.steps > 50 then return false, "매크로 step은 50개 이하" end
     for index, step in ipairs(spec.steps) do
       if type(step) ~= "table" then return false, "step " .. index .. " 형식 오류" end
+      if step.hold ~= nil then return false, "step " .. index .. ": 매크로 단계에는 hold 불가" end
       if step.type == "delay" then
         if type(step.seconds) ~= "number" or step.seconds < 0 or step.seconds > 60 then
           return false, "step " .. index .. ": 지연은 0~60초"
@@ -300,7 +312,9 @@ local function compileKeymap(raw)
             else
               local valid, reason = validateActionSpec(spec)
               if valid then
-                actions[id] = actionFromSpec(spec)
+                local entry = { run = actionFromSpec(spec) }
+                if spec.hold then entry.hold = actionFromSpec(spec.hold) end
+                actions[id] = entry
                 specs[id] = spec
               else
                 warn(layerSpec.name .. "/" .. profileName .. "/" .. id .. ": " .. reason)
@@ -425,15 +439,19 @@ if not VALID_WIDGET_MODES[k20WidgetMode] then k20WidgetMode = "hidden" end
 k20WidgetLevel = hs.settings.get(WIDGET_LEVEL_KEY)
 if not VALID_WIDGET_LEVELS[k20WidgetLevel] then k20WidgetLevel = "top" end
 
-local function dispatch(id)
+local function resolveEntry(id)
   local layer = k20Layers[k20CurrentLayer]
   local frontApp = hs.application.frontmostApplication()
   local appName = frontApp and frontApp:name() or ""
   local appProfile = layer.profiles[appName]
-  local action = (appProfile and appProfile[id]) or layer.profiles.default[id]
-  if action then
-    action()
-  elseif k20Webview and k20Webview:hswindow() then
+  return (appProfile and appProfile[id]) or layer.profiles.default[id], layer
+end
+
+local function dispatch(id)
+  local entry, layer = resolveEntry(id)
+  if entry and entry.run then
+    entry.run()
+  elseif not entry and k20Webview and k20Webview:hswindow() then
     -- 설정 창이 열려 있을 때만 안내 (키 찾기 용도). 평소에는 조용히 무시.
     hs.alert.show(layer.name .. " · " .. id .. " (미할당)")
   end
@@ -470,15 +488,21 @@ local function buildKeypadElements(layer, frameOpts)
     -- 할당된 키만 라벨 표시. 미할당/비활성 키는 빈 칸으로 (시각적 소음 제거)
     local label = ""
     local cellImage = nil
+    local micCell = false
     if keyInfo.switch then
       label = frameOpts.switchLabel or "+  레이어 전환"
     elseif not keyInfo.disabled and defaultSpecs[keyInfo.id] then
       local spec = defaultSpecs[keyInfo.id]
+      micCell = spec.type == "mic"
       cellImage = spec.image and iconImage(spec.image) or nil
       if cellImage then
         label = spec.label or ""
       else
-        label = (spec.icon and spec.icon .. " " or "") .. (spec.label or keyInfo.engraving)
+        local icon = spec.icon
+        if micCell and not icon then
+          icon = k20MicMuted and "🔇" or "🎙" -- 상태 반영 아이콘
+        end
+        label = (icon and icon .. " " or "") .. (spec.label or keyInfo.engraving)
       end
     end
 
@@ -490,6 +514,9 @@ local function buildKeypadElements(layer, frameOpts)
       action = "fill",
       fillColor = keyInfo.disabled
           and { white = 0.18, alpha = 0.45 * alphaScale }
+          or (micCell and (k20MicMuted
+            and { red = 0.48, green = 0.16, blue = 0.16, alpha = 0.95 * alphaScale }
+            or { red = 0.15, green = 0.36, blue = 0.22, alpha = 0.95 * alphaScale }))
           or { red = 0.18, green = 0.2, blue = 0.26, alpha = 0.95 * alphaScale },
       roundedRectRadii = { xRadius = radius, yRadius = radius },
       frame = { x = x, y = y, w = w, h = h },
@@ -908,8 +935,35 @@ local function switchLayer()
   setLayer(k20CurrentLayer % #k20Layers + 1, true)
 end
 
-local function handleKey(id)
-  if id == k20LayerSwitchId then switchLayer() else dispatch(id) end
+-- 길게 누르기: hold 동작이 있는 키는 눌림/뗌을 구분해 처리한다.
+-- hold가 없는 키는 기존처럼 누르는 즉시 실행 (지연 없음).
+local HOLD_SECONDS = 0.45
+k20HoldPending = k20HoldPending or {}
+
+local function keyPressed(id)
+  if id == k20LayerSwitchId then
+    switchLayer()
+    return
+  end
+  local entry = resolveEntry(id)
+  if not entry or not entry.hold then
+    dispatch(id)
+    return
+  end
+  local pending = { done = false, entry = entry }
+  pending.timer = hs.timer.doAfter(HOLD_SECONDS, function()
+    pending.done = true
+    if entry.hold then entry.hold() end
+  end)
+  k20HoldPending[id] = pending
+end
+
+local function keyReleased(id)
+  local pending = k20HoldPending[id]
+  if not pending then return end
+  k20HoldPending[id] = nil
+  if pending.timer then pending.timer:stop() end
+  if not pending.done and pending.entry.run then pending.entry.run() end
 end
 
 -- ===========================================================================
@@ -1097,12 +1151,30 @@ for f = 13, 20 do
     { mods = SHYPER, id = "s-hyper+" .. key },
   }) do
     local id = set.id
-    table.insert(k20Hotkeys, hs.hotkey.bind(set.mods, key, function() handleKey(id) end))
+    table.insert(k20Hotkeys, hs.hotkey.bind(set.mods, key,
+      function() keyPressed(id) end,
+      function() keyReleased(id) end))
   end
 end
 
 k20Menubar = hs.menubar.new()
 updateMenubar()
+
+-- 마이크 상태 추적: 즉시(k20RefreshViews) + 외부 변경 폴링(5초)
+function k20RefreshViews()
+  if renderWidget then renderWidget() end
+end
+
+local function syncMicState()
+  local dev = hs.audiodevice.defaultInputDevice()
+  local muted = dev and dev:muted() or false
+  if muted ~= k20MicMuted then
+    k20MicMuted = muted
+    k20RefreshViews()
+  end
+end
+syncMicState()
+k20MicPollTimer = hs.timer.doEvery(5, syncMicState)
 renderWidget()
 
 local function reloadOnLuaChange(files)

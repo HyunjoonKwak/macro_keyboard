@@ -353,6 +353,11 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
             <div class="icon-picker" id="iconPicker"></div>
           </div>
           <div class="field">
+            <label for="holdArg">길게 누르기 동작 (선택)</label>
+            <input id="holdArg" type="text" placeholder="예: keys:cmd+q 또는 app:Slack; delay:0.3; text:hi">
+            <p class="action-help">0.45초 이상 누르면 이 동작, 짧게 누르면 위의 기본 동작. 여러 개는 ;로 구분</p>
+          </div>
+          <div class="field">
             <span class="field-label">이미지 아이콘 (이모지 대신 사용)</span>
             <div class="image-row">
               <img id="imagePreview" alt="" hidden>
@@ -886,6 +891,11 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
         $("labelArg").value = spec && spec.label ? spec.label : "";
         $("iconArg").value = spec && spec.icon ? spec.icon : "";
         $("multiArg").value = "";
+        $("holdArg").value = spec && spec.hold
+          ? (spec.hold.type === "multi"
+              ? (spec.hold.steps || []).map(stepToLine).join("; ")
+              : stepToLine(spec.hold))
+          : "";
         setEditorImage(spec && spec.image ? spec.image : null);
         if (spec) {
           if (ARG_FIELDS[type]) $(ARG_FIELDS[type]).value = spec.arg || "";
@@ -945,6 +955,16 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
         if (label) spec.label = label;
         if (icon) spec.icon = icon;
         if (editorImage) spec.image = editorImage;
+        const holdText = $("holdArg").value.trim();
+        if (holdText) {
+          const steps = parseSteps(holdText.split(";").map(part => part.trim()).filter(Boolean).join("\n"));
+          if (steps.length === 1) {
+            if (steps[0].type === "delay") throw new Error("길게 누르기: 지연만으로는 동작이 안 됩니다.");
+            spec.hold = steps[0];
+          } else {
+            spec.hold = { type: "multi", steps };
+          }
+        }
         return spec;
       }
 
