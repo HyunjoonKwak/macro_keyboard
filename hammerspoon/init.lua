@@ -186,7 +186,7 @@ local function validateActionSpec(spec)
     end
     return true
   elseif spec.type == "app" or spec.type == "url" or spec.type == "text"
-      or spec.type == "shell" or spec.type == "shortcut" then
+      or spec.type == "shell" or spec.type == "shortcut" or spec.type == "layer" then
     if type(spec.arg) == "string" and spec.arg ~= "" then return true end
     return false, spec.type .. "에는 arg 문자열이 필요함"
   end
@@ -205,6 +205,12 @@ local function actionFromSpec(spec)
   if spec.type == "shortcut" then return shortcut(spec.arg) end
   if spec.type == "media" then return media(spec.arg) end
   if spec.type == "mic" then return micToggle end
+  if spec.type == "layer" then
+    -- k20GoToLayer는 setLayer 정의 이후에 전역으로 생성됨 (호출 시점 해석)
+    return function()
+      if k20GoToLayer then k20GoToLayer(spec.arg) end
+    end
+  end
   if spec.type == "multi" then
     return function() runSteps(spec.steps, 1) end
   end
@@ -984,6 +990,18 @@ end
 local function switchLayer()
   k20AutoLayerActive = false -- 수동 전환 시 자동 복귀 모드 해제 (사용자 제어 우선)
   setLayer(k20CurrentLayer % #k20Layers + 1, true)
+end
+
+-- "레이어 이동" 액션: 이름으로 특정 레이어에 직행
+function k20GoToLayer(name)
+  for index, layer in ipairs(k20Layers) do
+    if layer.name == name then
+      k20AutoLayerActive = false
+      setLayer(index, true)
+      return
+    end
+  end
+  hs.alert.show("⚠️ 레이어를 찾을 수 없음: " .. tostring(name))
 end
 
 -- ===========================================================================

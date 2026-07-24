@@ -281,6 +281,7 @@
               <option value="shortcut">단축어 실행</option>
               <option value="media">미디어</option>
               <option value="mic">마이크 토글</option>
+              <option value="layer">레이어 이동</option>
               <option value="multi">매크로 (연속 실행)</option>
             </select>
             <p class="action-help" id="actionHelp"></p>
@@ -320,6 +321,10 @@
               <label for="keyArg">키</label>
               <input id="keyArg" type="text" placeholder="예: t, space, `">
             </div>
+          </div>
+          <div class="dynamic field" data-for="layer">
+            <label for="layerArg">이동할 레이어</label>
+            <select id="layerArg"></select>
           </div>
           <div class="dynamic field" data-for="multi">
             <label for="multiArg">매크로 단계 (한 줄에 하나씩, 위에서 아래로 실행)</label>
@@ -455,6 +460,7 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
         shortcut: "macOS 단축어 앱의 항목을 실행합니다. 예: 집중 모드 켜기",
         media: "재생과 음량 같은 시스템 미디어 키를 보냅니다. 예: 재생 / 일시정지",
         mic: "기본 입력 장치의 음소거를 전환합니다. 예: 회의 중 마이크 끄기",
+        layer: "지정한 레이어로 바로 전환합니다. 예: 개발 레이어 직행 키",
         multi: "여러 동작을 위에서 아래로 순서대로 실행합니다. delay로 간격 조절"
       };
       const PRESETS = [
@@ -834,6 +840,7 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
 
       function fallbackLabel(spec) {
         if (spec.type === "mic") return "마이크";
+        if (spec.type === "layer") return "→ " + (spec.arg || "");
         if (spec.type === "multi") return `매크로(${(spec.steps || []).length})`;
         if (spec.type === "keys") return [...(spec.mods || []), spec.key || ""].filter(Boolean).join("+");
         return spec.arg || spec.type || "할당됨";
@@ -876,7 +883,7 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
               throw new Error(`${at}: media 값은 PLAY/PREVIOUS/NEXT/SOUND_UP/SOUND_DOWN/MUTE`);
             return { type: "media", arg: upper };
           }
-          if (["app", "url", "text", "shell", "shortcut"].includes(kind)) {
+          if (["app", "url", "text", "shell", "shortcut", "layer"].includes(kind)) {
             if (!value) throw new Error(`${at}: 값이 비어 있습니다`);
             return { type: kind, arg: value };
           }
@@ -904,6 +911,23 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
         document.querySelectorAll('input[name="mod"]').forEach(input => { input.checked = false; });
         $("labelArg").value = spec && spec.label ? spec.label : "";
         $("iconArg").value = spec && spec.icon ? spec.icon : "";
+        const layerSelect = $("layerArg");
+        layerSelect.replaceChildren();
+        keymap.layers.forEach(l => {
+          const option = document.createElement("option");
+          option.value = l.name;
+          option.textContent = l.name;
+          layerSelect.appendChild(option);
+        });
+        if (spec && type === "layer" && spec.arg) {
+          if (![...layerSelect.options].some(option => option.value === spec.arg)) {
+            const missing = document.createElement("option");
+            missing.value = spec.arg;
+            missing.textContent = spec.arg + " (삭제됨)";
+            layerSelect.appendChild(missing);
+          }
+          layerSelect.value = spec.arg;
+        }
         $("multiArg").value = "";
         $("holdArg").value = spec && spec.hold
           ? (spec.hold.type === "multi"
@@ -961,6 +985,9 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
           if (!spec.key) throw new Error("키를 입력해 주세요.");
         } else if (type === "media") {
           spec.arg = $("mediaArg").value;
+        } else if (type === "layer") {
+          spec.arg = $("layerArg").value;
+          if (!spec.arg) throw new Error("이동할 레이어를 선택해 주세요.");
         } else if (type === "multi") {
           spec.steps = parseSteps($("multiArg").value);
         }
