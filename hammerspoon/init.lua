@@ -1120,6 +1120,24 @@ sendKeymapToUI = function()
     k20Webview:evaluateJavaScript(
       "window.k20ReceiveAppIcons && window.k20ReceiveAppIcons(" .. iconsJson .. ");")
   end
+  -- 설치된 앱 목록 (앱 선택 자동완성용)
+  local apps = {}
+  local seen = {}
+  local output = hs.execute(
+    "ls /Applications /System/Applications /Applications/Utilities /System/Applications/Utilities 2>/dev/null", false)
+  for line in tostring(output):gmatch("[^\n]+") do
+    local name = line:match("^(.+)%.app$")
+    if name and not seen[name] then
+      seen[name] = true
+      table.insert(apps, name)
+    end
+  end
+  table.sort(apps, function(a, b) return a:lower() < b:lower() end)
+  local appsOk, appsJson = pcall(hs.json.encode, apps)
+  if appsOk then
+    k20Webview:evaluateJavaScript(
+      "window.k20ReceiveAppList && window.k20ReceiveAppList(" .. appsJson .. ");")
+  end
 end
 
 local function saveKeymap(keymap)
