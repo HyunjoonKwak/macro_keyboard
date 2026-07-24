@@ -633,6 +633,63 @@ shell:명령 · shortcut:단축어 · media:PLAY · mic · delay:0.5(초)</p>
           }
         },
         {
+          name: "PowerPoint 발표",
+          description: "슬라이드쇼 리모컨. PowerPoint 실행 시 자동 전환됩니다.",
+          color: "#4a2113",
+          appTrigger: "Microsoft PowerPoint",
+          keys: {
+            f13: { type: "keys", mods: ["cmd", "shift"], key: "return", label: "처음부터", icon: "▶️" },
+            f14: { type: "keys", mods: ["cmd"], key: "return", label: "현재부터", icon: "⏯️" },
+            f16: { type: "keys", mods: [], key: "left", label: "이전", icon: "◀️" },
+            f18: { type: "keys", mods: [], key: "right", label: "다음", icon: "▶️" },
+            f17: { type: "keys", mods: [], key: "b", label: "검은 화면", icon: "⬛" },
+            "hyper+f19": { type: "keys", mods: [], key: "escape", label: "쇼 종료", icon: "🚪" }
+          }
+        },
+        {
+          name: "Excel 작업",
+          description: "자동합계·날짜 입력·선택 붙여넣기 등. Excel 실행 시 자동 전환됩니다.",
+          color: "#14452b",
+          appTrigger: "Microsoft Excel",
+          keys: {
+            f13: { type: "keys", mods: ["cmd", "shift"], key: "t", label: "자동합계", icon: "∑" },
+            f14: { type: "keys", mods: ["ctrl"], key: ";", label: "오늘 날짜", icon: "📅" },
+            f15: { type: "keys", mods: ["ctrl"], key: "u", label: "셀 편집", icon: "✏️" },
+            f16: { type: "keys", mods: ["cmd", "alt"], key: "v", label: "선택 붙여넣기", icon: "📋" },
+            f17: { type: "keys", mods: ["cmd"], key: "f", label: "찾기", icon: "🔍" },
+            f19: { type: "text", arg: "=SUM(", label: "SUM 입력" }
+          }
+        },
+        {
+          name: "iMovie 편집",
+          description: "분할·재생·삭제 기본 편집. iMovie 실행 시 자동 전환됩니다.",
+          color: "#3d1f4e",
+          appTrigger: "iMovie",
+          keys: {
+            f15: { type: "keys", mods: ["cmd"], key: "b", label: "분할", icon: "✂️" },
+            f19: { type: "keys", mods: [], key: "space", label: "재생/정지", icon: "▶️" },
+            "s-hyper+f13": { type: "keys", mods: [], key: "delete", label: "삭제", icon: "🗑️" },
+            "hyper+f14": { type: "keys", mods: ["cmd"], key: "z", label: "실행 취소", icon: "↩️" },
+            "hyper+f15": { type: "keys", mods: ["cmd", "shift"], key: "z", label: "다시 실행", icon: "↪️" },
+            f17: { type: "keys", mods: ["cmd"], key: "=", label: "확대", icon: "➕" },
+            f16: { type: "keys", mods: ["cmd"], key: "-", label: "축소", icon: "➖" }
+          }
+        },
+        {
+          name: "GarageBand 녹음",
+          description: "녹음·재생·메트로놈·사이클. GarageBand 실행 시 자동 전환됩니다.",
+          color: "#4a3413",
+          appTrigger: "GarageBand",
+          keys: {
+            f13: { type: "keys", mods: [], key: "r", label: "녹음", icon: "⏺️" },
+            f14: { type: "keys", mods: [], key: "space", label: "재생/정지", icon: "▶️" },
+            f15: { type: "keys", mods: [], key: "return", label: "처음으로", icon: "⏮" },
+            f16: { type: "keys", mods: [], key: "k", label: "메트로놈", icon: "🎵" },
+            f17: { type: "keys", mods: [], key: "c", label: "사이클", icon: "🔁" },
+            f18: { type: "keys", mods: ["cmd"], key: "k", label: "뮤지컬 타이핑", icon: "🎹" }
+          }
+        },
+        {
           name: "메신저 모음",
           description: "설치된 메신저·메일 앱을 한 줄에. 앱 아이콘이 자동 표시됩니다.",
           color: "#243d2b",
